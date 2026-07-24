@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, UtensilsCrossed, ClipboardList, BarChart3, DollarSign, ShoppingBag, TrendingUp, Loader2 } from 'lucide-react';
+import { Users, UtensilsCrossed, ClipboardList, BarChart3, DollarSign, ShoppingBag, TrendingUp, Loader2, Receipt, History } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Profile, Food, Order, Category } from '@/types';
@@ -8,9 +8,11 @@ import { AdminUsersTab } from '@/pages/admin/AdminUsersTab';
 import { AdminFoodsTab } from '@/pages/admin/AdminFoodsTab';
 import { AdminOrdersTab } from '@/pages/admin/AdminOrdersTab';
 import { AdminRevenueTab } from '@/pages/admin/AdminRevenueTab';
+import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
+import { ZReportModal } from '@/components/ZReportModal';
 import { formatETB } from '@/lib/utils';
 
-type Tab = 'overview' | 'orders' | 'foods' | 'users' | 'revenue';
+type Tab = 'overview' | 'orders' | 'foods' | 'users' | 'revenue' | 'zreport' | 'history';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -20,6 +22,7 @@ export function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [zReportOpen, setZReportOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     const [profilesRes, foodsRes, ordersRes, categoriesRes] = await Promise.all([
@@ -53,6 +56,8 @@ export function AdminDashboard() {
     { value: 'foods', label: 'Foods', icon: UtensilsCrossed },
     { value: 'users', label: 'Users', icon: Users },
     { value: 'revenue', label: 'Revenue', icon: DollarSign },
+    { value: 'zreport', label: 'Z Report', icon: Receipt },
+    { value: 'history', label: 'History', icon: History },
   ];
 
   return (
@@ -150,6 +155,22 @@ export function AdminDashboard() {
           <AdminFoodsTab foods={foods} categories={categories} onRefresh={loadData} />
         ) : tab === 'users' ? (
           <AdminUsersTab profiles={profiles} onRefresh={loadData} />
+        ) : tab === 'zreport' ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4">
+              <Receipt size={28} className="text-brand-600" />
+            </div>
+            <h3 className="font-display font-bold text-lg text-gray-900 mb-2">Daily Closing (Z Report)</h3>
+            <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
+              Generate a Z Report to close today's business day. All open orders will be archived
+              with their totals. New orders will belong to the next business day.
+            </p>
+            <button onClick={() => setZReportOpen(true)} className="btn-primary">
+              <Receipt size={16} /> Generate Z Report
+            </button>
+          </div>
+        ) : tab === 'history' ? (
+          <ZReportsHistoryTab />
         ) : (
           <AdminRevenueTab orders={orders} onResetStats={async () => {
             await supabase.from('orders').update({ payment_status: 'unpaid' }).eq('payment_status', 'paid');
@@ -157,6 +178,8 @@ export function AdminDashboard() {
           }} />
         )}
       </div>
+
+      <ZReportModal open={zReportOpen} onClose={() => setZReportOpen(false)} onGenerated={loadData} />
     </div>
   );
 }

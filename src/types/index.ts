@@ -59,6 +59,8 @@ export interface Order {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  business_date: string;
+  z_report_id: string | null;
   order_items?: OrderItem[];
 }
 
@@ -75,4 +77,20 @@ export interface OrderItem {
 export interface CartItem {
   food: Food;
   quantity: number;
+}
+
+export interface ZReport {
+  id: string;
+  report_number: number;
+  business_date: string;
+  total_orders: number;
+  completed_orders: number;
+  cancelled_orders: number;
+  total_revenue: number;
+  total_discounts: number;
+  order_snapshot: Order[];
+  generated_at: string;
+  generated_by: string | null;
+  generated_by_name: string;
+  notes: string | null;
 }

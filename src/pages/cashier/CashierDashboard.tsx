@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, ChefHat, PackageCheck, DollarSign, ClipboardList, Loader2 } from 'lucide-react';
+import { CheckCircle2, ChefHat, PackageCheck, DollarSign, ClipboardList, Loader2, Receipt } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Order } from '@/types';
 import { StaffHeader } from '@/components/Headers';
 import { OrderCard } from '@/components/OrderCard';
+import { ZReportModal } from '@/components/ZReportModal';
 import { formatETB, getNextStatus } from '@/lib/utils';
 
 type Tab = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'all';
@@ -13,6 +14,7 @@ export function CashierDashboard() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('pending');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [zReportOpen, setZReportOpen] = useState(false);
 
   const loadOrders = useCallback(async () => {
     let query = supabase
@@ -69,6 +71,13 @@ export function CashierDashboard() {
           <StatCard icon={ChefHat} label="Preparing" value={orders.filter((o) => o.status === 'preparing').length} color="text-purple-600 bg-purple-50" />
           <StatCard icon={PackageCheck} label="Ready" value={orders.filter((o) => o.status === 'ready').length} color="text-cyan-600 bg-cyan-50" />
           <StatCard icon={DollarSign} label="Revenue" value={formatETB(orders.filter((o) => o.payment_status === 'paid').reduce((s, o) => s + Number(o.total), 0))} color="text-green-600 bg-green-50" />
+        </div>
+
+        {/* Z Report button */}
+        <div className="mb-4">
+          <button onClick={() => setZReportOpen(true)} className="btn-primary w-full sm:w-auto">
+            <Receipt size={16} /> Generate Z Report (Daily Closing)
+          </button>
         </div>
 
         {/* Tabs */}
@@ -134,6 +143,8 @@ export function CashierDashboard() {
           </div>
         )}
       </div>
+
+      <ZReportModal open={zReportOpen} onClose={() => setZReportOpen(false)} onGenerated={loadOrders} />
     </div>
   );
 }
