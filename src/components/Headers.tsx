@@ -156,7 +156,7 @@ export function StaffHeader({ title, subtitle }: StaffHeaderProps) {
             {user?.full_name?.charAt(0).toUpperCase()}
           </div>
           <button
-            onClick={() => { logout(); navigate('/login'); }}
+            onClick={() => { logout(); navigate('/staff/login'); }}
             className="p-2.5 rounded-xl hover:bg-gray-100 transition"
           >
             <LogOut size={20} className="text-gray-700" />

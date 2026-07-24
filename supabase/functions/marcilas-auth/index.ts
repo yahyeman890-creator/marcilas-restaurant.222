@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
 
     // ============ LOGIN ============
     if (action === "login") {
-      const { phone, password } = body;
+      const { phone, password, client_type } = body;
 
       if (!phone || !password) {
         return jsonResponse({ error: "Phone number and password are required" }, 400);
@@ -142,6 +142,17 @@ Deno.serve(async (req: Request) => {
       const inputHash = await hashPassword(password, profile.password_salt);
       if (inputHash !== profile.password_hash) {
         return jsonResponse({ error: "Invalid phone number or password" }, 401);
+      }
+
+      // Public customer login: only customers may authenticate here.
+      // Staff (admin/cashier/driver) must use the separate staff login.
+      if (client_type === "public" && profile.role !== "customer") {
+        return jsonResponse({ error: "This account is not a customer account. Please use the staff login page." }, 403);
+      }
+
+      // Staff login: only staff roles may authenticate here.
+      if (client_type === "staff" && profile.role === "customer") {
+        return jsonResponse({ error: "This is a customer account. Please log in from the main website." }, 403);
       }
 
       const { password_hash, password_salt, ...safeProfile } = profile;

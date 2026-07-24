@@ -5,7 +5,7 @@ import type { Profile, UserRole } from '@/types';
 interface AuthContextValue {
   user: Profile | null;
   loading: boolean;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, password: string, clientType?: 'public' | 'staff') => Promise<void>;
   register: (fullName: string, phone: string, password: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  async function login(phone: string, password: string) {
+  async function login(phone: string, password: string, clientType: 'public' | 'staff' = 'public') {
     let res: Response;
     try {
       res = await fetch(`${AUTH_FUNCTION_URL}?action=login`, {
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           'apikey': SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ phone, password }),
+        body: JSON.stringify({ phone, password, client_type: clientType }),
       });
     } catch {
       throw new Error('Cannot connect to the server. Please check your internet connection and try again.');

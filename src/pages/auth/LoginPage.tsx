@@ -18,7 +18,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(phone, password);
+      await login(phone, password, 'public');
       const stored = localStorage.getItem('marcilas_user');
       if (stored) {
         const user = JSON.parse(stored);
