@@ -3,6 +3,8 @@ import { Truck, MapPin, Phone, CheckCircle2, Navigation, Loader2, Package, Cross
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
+import { useNotifications } from '@/hooks/useNotifications';
 import type { Order } from '@/types';
 import { StaffHeader } from '@/components/Headers';
 import { DeliveryMap } from '@/components/DeliveryMap';
@@ -17,6 +19,7 @@ export function DriverDashboard() {
   const [tab, setTab] = useState<'available' | 'active' | 'delivered'>('available');
   const [mapOrder, setMapOrder] = useState<Order | null>(null);
   const gps = useGeolocation();
+  const { notifyOrderReady } = useNotifications();
 
   const loadOrders = useCallback(async () => {
     if (!user) return;
@@ -33,14 +36,22 @@ export function DriverDashboard() {
         .eq('driver_id', user.id)
         .order('created_at', { ascending: false }),
     ]);
-    setAvailableOrders(availRes.data ?? []);
+    setAvailableOrders((prev) => {
+      // Notify for any newly-ready orders not previously seen
+      const prevIds = new Set(prev.map((o) => o.id));
+      (availRes.data ?? []).forEach((o) => {
+        if (!prevIds.has(o.id)) notifyOrderReady(o.id, o.customer_name);
+      });
+      return availRes.data ?? [];
+    });
     setMyOrders(myRes.data ?? []);
     setLoading(false);
-  }, [user]);
+  }, [user, notifyOrderReady]);
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+  useEffect(() => { loadOrders(); }, [loadOrders]);
+
+  // Real-time: re-fetch whenever an order assigned to this driver changes
+  useOrdersRealtime(loadOrders);
 
   async function acceptOrder(orderId: string) {
     if (!user) return;

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Users, UtensilsCrossed, ClipboardList, BarChart3, DollarSign, ShoppingBag, TrendingUp, Loader2, Receipt, History } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
 import type { Profile, Food, Order, Category } from '@/types';
 import { StaffHeader } from '@/components/Headers';
 import { AdminUsersTab } from '@/pages/admin/AdminUsersTab';
@@ -44,6 +45,9 @@ export function AdminDashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Real-time: re-fetch orders whenever anything changes
+  useOrdersRealtime(loadData);
 
   const activeOrders = orders.filter((o) => !o.z_report_id);
   const totalRevenue = activeOrders

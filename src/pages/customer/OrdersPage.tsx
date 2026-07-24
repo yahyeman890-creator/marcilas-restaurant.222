@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ClipboardList, Package, MapPin, Phone, Clock, Truck, User, CheckCircle2, Navigation } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
+import { useNotifications } from '@/hooks/useNotifications';
 import type { Order } from '@/types';
 import { formatETB, formatDateTime, getStatusInfo, ORDER_STATUSES } from '@/lib/utils';
 import { CustomerHeader } from '@/components/Headers';
@@ -11,26 +13,39 @@ export function OrdersPage() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const prevStatusRef = useRef<Record<string, string>>({});
+  const { notifyDriverAssigned, notifyDelivered } = useNotifications();
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  async function loadOrders() {
+    if (!user) return;
+    const { data } = await supabase
+      .from('orders')
+      .select('*, order_items(*)')
+      .eq('customer_id', user.id)
+      .order('created_at', { ascending: false });
+    const incoming = data ?? [];
 
-  useEffect(() => {
-    async function loadOrders() {
-      if (!user) return;
-      const { data } = await supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .eq('customer_id', user.id)
-        .order('created_at', { ascending: false });
-      setOrders(data ?? []);
-      setLoading(false);
-    }
-    loadOrders();
+    // Fire notifications for status transitions
+    incoming.forEach((o) => {
+      const prev = prevStatusRef.current[o.id];
+      if (prev && prev !== o.status) {
+        if (o.status === 'out_for_delivery') notifyDriverAssigned(o.id, o.driver_name ?? 'Your driver');
+        if (o.status === 'delivered') notifyDelivered(o.id);
+      }
+      prevStatusRef.current[o.id] = o.status;
+    });
 
-    // Poll for updates every 15 seconds so customer sees driver assignment in real time
-    pollRef.current = setInterval(loadOrders, 15000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [user]);
+    setOrders(incoming);
+    setLoading(false);
+  }
+
+  useEffect(() => { if (user) loadOrders(); }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Real-time: only listen to this customer's orders
+  useOrdersRealtime(
+    loadOrders,
+    user ? `customer_id=eq.${user.id}` : undefined,
+  );
 
   const activeOrders = orders.filter((o) => !['delivered', 'cancelled'].includes(o.status));
   const pastOrders = orders.filter((o) => ['delivered', 'cancelled'].includes(o.status));
