@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Phone, Lock, UtensilsCrossed, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +30,8 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register(fullName, phone, password);
-      navigate('/menu');
+      const redirect = searchParams.get('redirect');
+      navigate(redirect || '/menu');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -145,7 +147,7 @@ export function RegisterPage() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-brand-600 font-semibold hover:underline">Log In</Link>
+            <Link to={`/login${searchParams.get('redirect') ? `?redirect=${searchParams.get('redirect')}` : ''}`} className="text-brand-600 font-semibold hover:underline">Log In</Link>
           </p>
         </div>
       </div>

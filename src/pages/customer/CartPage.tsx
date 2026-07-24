@@ -103,7 +103,7 @@ export function CartPage() {
             <span className="font-bold text-xl text-brand-600">{formatETB(totalPrice + 50)}</span>
           </div>
           <button
-            onClick={() => navigate('/checkout')}
+            onClick={() => navigate(user ? '/checkout' : '/login?redirect=/checkout')}
             className="btn-primary w-full py-3"
           >
             Proceed to Checkout

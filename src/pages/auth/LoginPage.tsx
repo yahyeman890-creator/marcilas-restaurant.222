@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Phone, Lock, UtensilsCrossed, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDashboardPath } from '@/contexts/AuthContext';
@@ -7,6 +7,7 @@ import { getDashboardPath } from '@/contexts/AuthContext';
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,7 +22,12 @@ export function LoginPage() {
       const stored = localStorage.getItem('marcilas_user');
       if (stored) {
         const user = JSON.parse(stored);
-        navigate(getDashboardPath(user.role));
+        const redirect = searchParams.get('redirect');
+        if (redirect && user.role === 'customer') {
+          navigate(redirect);
+        } else {
+          navigate(getDashboardPath(user.role));
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -123,7 +129,7 @@ export function LoginPage() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Don't have an account?{' '}
-            <Link to="/register" className="text-brand-600 font-semibold hover:underline">Register</Link>
+            <Link to={`/register${searchParams.get('redirect') ? `?redirect=${searchParams.get('redirect')}` : ''}`} className="text-brand-600 font-semibold hover:underline">Register</Link>
           </p>
 
         </div>

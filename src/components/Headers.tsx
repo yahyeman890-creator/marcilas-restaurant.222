@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, User, LogOut, UtensilsCrossed, ClipboardList, Menu, X } from 'lucide-react';
+import { ShoppingBag, User, LogOut, UtensilsCrossed, ClipboardList, Menu, X, LogIn } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -26,8 +26,12 @@ export function CustomerHeader() {
 
         <nav className="hidden md:flex items-center gap-1">
           <Link to="/menu" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">Menu</Link>
-          <Link to="/orders" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">My Orders</Link>
-          <Link to="/profile" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">Profile</Link>
+          {user && (
+            <>
+              <Link to="/orders" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">My Orders</Link>
+              <Link to="/profile" className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">Profile</Link>
+            </>
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -43,16 +47,27 @@ export function CustomerHeader() {
             )}
           </Link>
 
-          <Link to="/profile" className="hidden sm:flex p-2.5 rounded-xl hover:bg-gray-100 transition">
-            <User size={22} className="text-gray-700" />
-          </Link>
+          {user ? (
+            <>
+              <Link to="/profile" className="hidden sm:flex p-2.5 rounded-xl hover:bg-gray-100 transition">
+                <User size={22} className="text-gray-700" />
+              </Link>
 
-          <button
-            onClick={() => { logout(); navigate('/login'); }}
-            className="hidden sm:flex p-2.5 rounded-xl hover:bg-gray-100 transition"
-          >
-            <LogOut size={22} className="text-gray-700" />
-          </button>
+              <button
+                onClick={() => { logout(); navigate('/menu'); }}
+                className="hidden sm:flex p-2.5 rounded-xl hover:bg-gray-100 transition"
+              >
+                <LogOut size={22} className="text-gray-700" />
+              </button>
+            </>
+          ) : (
+            <Link
+              to="/login"
+              className="hidden sm:flex items-center gap-2 rounded-xl bg-brand-600 text-white px-4 py-2.5 text-sm font-semibold hover:bg-brand-700 transition"
+            >
+              <LogIn size={18} /> Login
+            </Link>
+          )}
 
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -69,18 +84,39 @@ export function CustomerHeader() {
             <Link to="/menu" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium">
               <UtensilsCrossed size={18} /> Menu
             </Link>
-            <Link to="/orders" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium">
-              <ClipboardList size={18} /> My Orders
-            </Link>
-            <Link to="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium">
-              <User size={18} /> Profile
-            </Link>
-            <button
-              onClick={() => { logout(); navigate('/login'); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium text-left"
-            >
-              <LogOut size={18} /> Logout
-            </button>
+            {user ? (
+              <>
+                <Link to="/orders" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium">
+                  <ClipboardList size={18} /> My Orders
+                </Link>
+                <Link to="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium">
+                  <User size={18} /> Profile
+                </Link>
+                <button
+                  onClick={() => { logout(); setMenuOpen(false); navigate('/menu'); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium text-left"
+                >
+                  <LogOut size={18} /> Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium text-brand-600"
+                >
+                  <LogIn size={18} /> Login
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-sm font-medium text-gray-700"
+                >
+                  <User size={18} /> Register
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

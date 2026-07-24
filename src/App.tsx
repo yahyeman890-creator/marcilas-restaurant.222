@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth, getDashboardPath } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import type { ReactNode } from 'react';
@@ -16,6 +16,7 @@ import type { UserRole } from '@/types';
 
 function ProtectedRoute({ children, roles }: { children: ReactNode; roles?: UserRole[] }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -25,7 +26,9 @@ function ProtectedRoute({ children, roles }: { children: ReactNode; roles?: User
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+  }
   if (roles && !roles.includes(user.role)) return <Navigate to={getDashboardPath(user.role)} replace />;
 
   return <>{children}</>;
@@ -33,6 +36,7 @@ function ProtectedRoute({ children, roles }: { children: ReactNode; roles?: User
 
 function PublicOnlyRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -42,7 +46,12 @@ function PublicOnlyRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  if (user) return <Navigate to={getDashboardPath(user.role)} replace />;
+  if (user) {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get('redirect');
+    if (redirect && user.role === 'customer') return <Navigate to={redirect} replace />;
+    return <Navigate to={getDashboardPath(user.role)} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -53,9 +62,12 @@ function AppRoutes() {
       <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
 
-      {/* Customer */}
-      <Route path="/menu" element={<ProtectedRoute roles={['customer']}><MenuPage /></ProtectedRoute>} />
-      <Route path="/cart" element={<ProtectedRoute roles={['customer']}><CartPage /></ProtectedRoute>} />
+      {/* Customer — public browsing */}
+      <Route path="/" element={<Navigate to="/menu" replace />} />
+      <Route path="/menu" element={<MenuPage />} />
+      <Route path="/cart" element={<CartPage />} />
+
+      {/* Customer — auth required */}
       <Route path="/checkout" element={<ProtectedRoute roles={['customer']}><CheckoutPage /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute roles={['customer']}><OrdersPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute roles={['customer']}><ProfilePage /></ProtectedRoute>} />
@@ -69,9 +81,8 @@ function AppRoutes() {
       {/* Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminDashboard /></ProtectedRoute>} />
 
-      {/* Default */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/menu" replace />} />
     </Routes>
   );
 }
