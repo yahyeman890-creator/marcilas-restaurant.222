@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, ChefHat, PackageCheck, DollarSign, ClipboardList, Loader2, Receipt } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Order } from '@/types';
@@ -7,7 +7,6 @@ import { OrderCard } from '@/components/OrderCard';
 import { ZReportModal } from '@/components/ZReportModal';
 import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
 import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
-import { useNotifications } from '@/hooks/useNotifications';
 import { formatETB, getNextStatus } from '@/lib/utils';
 
 type Tab = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'all' | 'history';
@@ -19,8 +18,6 @@ export function CashierDashboard() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [zReportOpen, setZReportOpen] = useState(false);
   const [todayClosed, setTodayClosed] = useState(false);
-  const knownOrderIds = useRef(new Set<string>());
-  const { notifyNewOrder } = useNotifications();
 
   const loadOrders = useCallback(async () => {
     let query = supabase
@@ -35,20 +32,7 @@ export function CashierDashboard() {
     else if (tab === 'ready') query = query.eq('status', 'ready');
 
     const { data } = await query;
-    const incoming = data ?? [];
-
-    // Fire notification for any order IDs we haven't seen before
-    incoming.forEach((o) => {
-      if (!knownOrderIds.current.has(o.id)) {
-        knownOrderIds.current.add(o.id);
-        // Only notify on genuinely new pending orders (not initial load)
-        if (o.status === 'pending' && knownOrderIds.current.size > 1) {
-          notifyNewOrder(o.id, o.customer_name);
-        }
-      }
-    });
-
-    setOrders(incoming);
+    setOrders(data ?? []);
     setLoading(false);
 
     const { data: todayReport } = await supabase

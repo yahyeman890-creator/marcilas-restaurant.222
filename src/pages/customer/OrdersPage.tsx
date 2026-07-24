@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ClipboardList, Package, MapPin, Phone, Clock, Truck, User, CheckCircle2, Navigation } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
-import { useNotifications } from '@/hooks/useNotifications';
 import type { Order } from '@/types';
 import { formatETB, formatDateTime, getStatusInfo, ORDER_STATUSES } from '@/lib/utils';
 import { CustomerHeader } from '@/components/Headers';
@@ -13,8 +12,6 @@ export function OrdersPage() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const prevStatusRef = useRef<Record<string, string>>({});
-  const { notifyDriverAssigned, notifyDelivered } = useNotifications();
 
   async function loadOrders() {
     if (!user) return;
@@ -23,25 +20,12 @@ export function OrdersPage() {
       .select('*, order_items(*)')
       .eq('customer_id', user.id)
       .order('created_at', { ascending: false });
-    const incoming = data ?? [];
-
-    // Fire notifications for status transitions
-    incoming.forEach((o) => {
-      const prev = prevStatusRef.current[o.id];
-      if (prev && prev !== o.status) {
-        if (o.status === 'out_for_delivery') notifyDriverAssigned(o.id, o.driver_name ?? 'Your driver');
-        if (o.status === 'delivered') notifyDelivered(o.id);
-      }
-      prevStatusRef.current[o.id] = o.status;
-    });
-
-    setOrders(incoming);
+    setOrders(data ?? []);
     setLoading(false);
   }
 
   useEffect(() => { if (user) loadOrders(); }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Real-time: only listen to this customer's orders
   useOrdersRealtime(
     loadOrders,
     user ? `customer_id=eq.${user.id}` : undefined,
