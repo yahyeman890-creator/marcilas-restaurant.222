@@ -23,18 +23,21 @@ export function AdminDashboard() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [zReportOpen, setZReportOpen] = useState(false);
+  const [todayClosed, setTodayClosed] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [profilesRes, foodsRes, ordersRes, categoriesRes] = await Promise.all([
+    const [profilesRes, foodsRes, ordersRes, categoriesRes, todayReportRes] = await Promise.all([
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('foods').select('*, category:categories(*)').order('created_at', { ascending: false }),
       supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
       supabase.from('categories').select('*').order('sort_order'),
+      supabase.from('z_reports').select('id').eq('business_date', new Date().toISOString().slice(0, 10)).maybeSingle(),
     ]);
     setProfiles(profilesRes.data ?? []);
     setFoods(foodsRes.data ?? []);
     setOrders(ordersRes.data ?? []);
     setCategories(categoriesRes.data ?? []);
+    setTodayClosed(!!todayReportRes.data);
     setLoading(false);
   }, []);
 
@@ -42,11 +45,12 @@ export function AdminDashboard() {
     loadData();
   }, [loadData]);
 
-  const totalRevenue = orders
+  const activeOrders = orders.filter((o) => !o.z_report_id);
+  const totalRevenue = activeOrders
     .filter((o) => o.payment_status === 'paid')
     .reduce((sum, o) => sum + Number(o.total), 0);
-  const totalOrders = orders.length;
-  const pendingOrders = orders.filter((o) => o.status === 'pending').length;
+  const totalOrders = activeOrders.length;
+  const pendingOrders = activeOrders.filter((o) => o.status === 'pending').length;
   const totalCustomers = profiles.filter((p) => p.role === 'customer').length;
   const totalStaff = profiles.filter((p) => p.role !== 'customer').length;
 
@@ -151,26 +155,37 @@ export function AdminDashboard() {
           </div>
         ) : tab === 'orders' ? (
           <AdminOrdersTab orders={orders} onRefresh={loadData} />
-        ) : tab === 'foods' ? (
-          <AdminFoodsTab foods={foods} categories={categories} onRefresh={loadData} />
-        ) : tab === 'users' ? (
-          <AdminUsersTab profiles={profiles} onRefresh={loadData} />
         ) : tab === 'zreport' ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4">
               <Receipt size={28} className="text-brand-600" />
             </div>
             <h3 className="font-display font-bold text-lg text-gray-900 mb-2">Daily Closing (Z Report)</h3>
-            <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
+            <p className="text-sm text-gray-500 max-w-md mx-auto mb-2">
               Generate a Z Report to close today's business day. All open orders will be archived
               with their totals. New orders will belong to the next business day.
             </p>
-            <button onClick={() => setZReportOpen(true)} className="btn-primary">
+            {todayClosed ? (
+              <div className="mb-4">
+                <span className="badge bg-green-50 text-green-700 border-green-100">
+                  Today's business day is already closed
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 max-w-md mx-auto mb-6">
+                Only one Z Report can be generated per business day. No orders will be deleted.
+              </p>
+            )}
+            <button onClick={() => setZReportOpen(true)} className="btn-primary" disabled={todayClosed}>
               <Receipt size={16} /> Generate Z Report
             </button>
           </div>
         ) : tab === 'history' ? (
           <ZReportsHistoryTab />
+        ) : tab === 'foods' ? (
+          <AdminFoodsTab foods={foods} categories={categories} onRefresh={loadData} />
+        ) : tab === 'users' ? (
+          <AdminUsersTab profiles={profiles} onRefresh={loadData} />
         ) : (
           <AdminRevenueTab orders={orders} onResetStats={async () => {
             await supabase.from('orders').update({ payment_status: 'unpaid' }).eq('payment_status', 'paid');

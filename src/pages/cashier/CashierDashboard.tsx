@@ -5,9 +5,10 @@ import type { Order } from '@/types';
 import { StaffHeader } from '@/components/Headers';
 import { OrderCard } from '@/components/OrderCard';
 import { ZReportModal } from '@/components/ZReportModal';
+import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
 import { formatETB, getNextStatus } from '@/lib/utils';
 
-type Tab = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'all';
+type Tab = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'all' | 'history';
 
 export function CashierDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -15,11 +16,13 @@ export function CashierDashboard() {
   const [tab, setTab] = useState<Tab>('pending');
   const [updating, setUpdating] = useState<string | null>(null);
   const [zReportOpen, setZReportOpen] = useState(false);
+  const [todayClosed, setTodayClosed] = useState(false);
 
   const loadOrders = useCallback(async () => {
     let query = supabase
       .from('orders')
       .select('*, order_items(*)')
+      .is('z_report_id', null)
       .order('created_at', { ascending: false });
 
     if (tab === 'pending') query = query.eq('status', 'pending');
@@ -30,6 +33,13 @@ export function CashierDashboard() {
     const { data } = await query;
     setOrders(data ?? []);
     setLoading(false);
+
+    const { data: todayReport } = await supabase
+      .from('z_reports')
+      .select('id')
+      .eq('business_date', new Date().toISOString().slice(0, 10))
+      .maybeSingle();
+    setTodayClosed(!!todayReport);
   }, [tab]);
 
   useEffect(() => {
@@ -58,6 +68,7 @@ export function CashierDashboard() {
     { value: 'preparing', label: 'Preparing' },
     { value: 'ready', label: 'Ready' },
     { value: 'all', label: 'All' },
+    { value: 'history', label: 'History' },
   ];
 
   return (
@@ -75,11 +86,15 @@ export function CashierDashboard() {
 
         {/* Z Report button */}
         <div className="mb-4">
-          <button onClick={() => setZReportOpen(true)} className="btn-primary w-full sm:w-auto">
-            <Receipt size={16} /> Generate Z Report (Daily Closing)
+          <button onClick={() => setZReportOpen(true)} className="btn-primary w-full sm:w-auto" disabled={todayClosed}>
+            <Receipt size={16} /> {todayClosed ? 'Today Already Closed' : 'Generate Z Report (Daily Closing)'}
           </button>
         </div>
 
+        {tab === 'history' ? (
+          <ZReportsHistoryTab />
+        ) : (
+        <>
         {/* Tabs */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
           {tabs.map((t) => (
@@ -141,6 +156,8 @@ export function CashierDashboard() {
               );
             })}
           </div>
+        )}
+        </>
         )}
       </div>
 

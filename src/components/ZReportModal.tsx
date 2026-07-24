@@ -1,10 +1,9 @@
-import { useState } from 'react';
-import { Printer, Download, X, Receipt, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Printer, Download, Receipt, Loader2, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Order, ZReport } from '@/types';
 import { Modal } from '@/components/Modal';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { formatETB, formatDateTime } from '@/lib/utils';
 
 interface Props {
@@ -15,29 +14,52 @@ interface Props {
 
 export function ZReportModal({ open, onClose, onGenerated }: Props) {
   const { user } = useAuth();
-  const [step, setStep] = useState<'preview' | 'result'>('preview');
+  const [step, setStep] = useState<'preview' | 'confirm' | 'result'>('preview');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [report, setReport] = useState<ZReport | null>(null);
+  const [alreadyClosed, setAlreadyClosed] = useState(false);
+  const [todayOrderCount, setTodayOrderCount] = useState(0);
 
   const today = new Date().toISOString().slice(0, 10);
+
+  const checkExistingReport = useCallback(async () => {
+    const { data } = await supabase
+      .from('z_reports')
+      .select('id')
+      .eq('business_date', today)
+      .maybeSingle();
+    setAlreadyClosed(!!data);
+
+    const { count } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .is('z_report_id', null);
+    setTodayOrderCount(count ?? 0);
+  }, [today]);
+
+  useEffect(() => {
+    if (open) {
+      setStep('preview');
+      setError('');
+      setReport(null);
+      checkExistingReport();
+    }
+  }, [open, checkExistingReport]);
 
   async function handleGenerate() {
     setGenerating(true);
     setError('');
     try {
-      // Fetch all unclosed orders (no z_report_id) for today
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select('*, order_items(*)')
         .is('z_report_id', null)
-        .gte('business_date', '2000-01-01')
         .order('created_at', { ascending: true });
 
       if (ordersError) throw ordersError;
 
-      const orderList = orders ?? [];
+      const orderList = (orders ?? []) as Order[];
       const totalOrders = orderList.length;
       const completedOrders = orderList.filter((o) => o.status === 'delivered').length;
       const cancelledOrders = orderList.filter((o) => o.status === 'cancelled').length;
@@ -45,7 +67,6 @@ export function ZReportModal({ open, onClose, onGenerated }: Props) {
         .filter((o) => o.payment_status === 'paid')
         .reduce((sum, o) => sum + Number(o.total), 0);
 
-      // Get next report number
       const { data: lastReport } = await supabase
         .from('z_reports')
         .select('report_number')
@@ -74,23 +95,23 @@ export function ZReportModal({ open, onClose, onGenerated }: Props) {
 
       if (insertError) throw insertError;
 
-      // Tag all those orders with the z_report_id
       const orderIds = orderList.map((o) => o.id);
       if (orderIds.length > 0) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('orders')
           .update({ z_report_id: newReport.id })
           .in('id', orderIds);
+        if (updateError) throw updateError;
       }
 
-      setReport(newReport);
+      setReport(newReport as ZReport);
       setStep('result');
       onGenerated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate Z Report');
+      setStep('preview');
     } finally {
       setGenerating(false);
-      setConfirmOpen(false);
     }
   }
 
@@ -126,14 +147,85 @@ export function ZReportModal({ open, onClose, onGenerated }: Props) {
         </div>
       )}
 
-      {step === 'preview' ? (
-        <ZReportPreview onGenerate={() => setConfirmOpen(true)} generating={generating} />
-      ) : report ? (
+      {step === 'preview' && !alreadyClosed && (
+        <div className="text-center py-6">
+          <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4">
+            <Receipt size={28} className="text-brand-600" />
+          </div>
+          <h3 className="font-display font-bold text-lg text-gray-900 mb-2">Daily Closing (Z Report)</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto mb-2">
+            This will close today's business day and archive all <strong>{todayOrderCount}</strong> open orders
+            into a Z Report. New orders will automatically belong to the next business day.
+          </p>
+          <p className="text-xs text-gray-400 max-w-md mx-auto mb-6">
+            No orders will be deleted. Only one Z Report can be generated per business day.
+          </p>
+          <button
+            onClick={() => setStep('confirm')}
+            disabled={generating || todayOrderCount === 0}
+            className="btn-primary"
+          >
+            <Receipt size={16} /> Generate Z Report
+          </button>
+          {todayOrderCount === 0 && (
+            <p className="text-xs text-gray-400 mt-3">No open orders to close today.</p>
+          )}
+        </div>
+      )}
+
+      {step === 'preview' && alreadyClosed && (
+        <div className="text-center py-6">
+          <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 size={28} className="text-green-600" />
+          </div>
+          <h3 className="font-display font-bold text-lg text-gray-900 mb-2">Today Already Closed</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
+            A Z Report has already been generated for today ({today}). New orders will belong to the next
+            business day. You can view past reports in the History tab.
+          </p>
+          <button onClick={handleClose} className="btn-primary">Close</button>
+        </div>
+      )}
+
+      {step === 'confirm' && (
+        <div className="text-center py-4">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle size={24} className="text-red-600" />
+          </div>
+          <h3 className="font-display font-bold text-base text-gray-900 mb-3">Close Today's Business Day?</h3>
+          <div className="text-gray-600 text-sm mb-6 max-w-md mx-auto">
+            This will archive all <strong>{todayOrderCount}</strong> open orders into a Z Report.
+            <br />
+            <strong>New orders will belong to the next business day.</strong>
+            <br />
+            No orders will be deleted.
+          </div>
+          <div className="flex gap-3 max-w-sm mx-auto">
+            <button
+              onClick={() => setStep('preview')}
+              disabled={generating}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="btn-danger flex-1"
+            >
+              {generating ? <Loader2 size={16} className="animate-spin" /> : null}
+              Close Day
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'result' && report && (
         <div>
           <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-green-50 border border-green-100">
             <CheckCircle2 size={20} className="text-green-600" />
             <span className="text-sm font-medium text-green-700">
-              Z Report #{report.report_number} generated successfully. Today's orders are now closed.
+              Z Report #{report.report_number} generated successfully. A new business day has started.
             </span>
           </div>
 
@@ -153,46 +245,8 @@ export function ZReportModal({ open, onClose, onGenerated }: Props) {
             </button>
           </div>
         </div>
-      ) : null}
-
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Generate Z Report"
-        destructive
-        confirmLabel="Close Day"
-        message={
-          <>
-            This will close today's business day and archive all open orders into a Z Report.
-            <br />
-            <strong>New orders will belong to the next business day.</strong>
-            <br />
-            No orders will be deleted.
-          </>
-        }
-        onConfirm={handleGenerate}
-        onClose={() => setConfirmOpen(false)}
-      />
+      )}
     </Modal>
-  );
-}
-
-function ZReportPreview({ onGenerate, generating }: { onGenerate: () => void; generating: boolean }) {
-  return (
-    <div className="text-center py-6">
-      <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4">
-        <Receipt size={28} className="text-brand-600" />
-      </div>
-      <h3 className="font-display font-bold text-lg text-gray-900 mb-2">Daily Closing (Z Report)</h3>
-      <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
-        Generate a Z Report to close today's business day. This will snapshot all open orders,
-        calculate daily totals, and archive them. New orders will automatically be assigned to
-        the next business day.
-      </p>
-      <button onClick={onGenerate} disabled={generating} className="btn-primary">
-        {generating ? <Loader2 size={16} className="animate-spin" /> : <Receipt size={16} />}
-        Generate Z Report
-      </button>
-    </div>
   );
 }
 
@@ -204,7 +258,6 @@ export function ZReportDocument({ report }: { report: ZReport }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
-      {/* Header */}
       <div className="text-center border-b-2 border-gray-900 pb-4 mb-4">
         <h1 className="font-display font-bold text-xl text-gray-900">MARCILAS RESTAURANT</h1>
         <p className="text-xs text-gray-500">Dire Dawa, Ethiopia</p>
@@ -212,7 +265,6 @@ export function ZReportDocument({ report }: { report: ZReport }) {
         <p className="text-sm text-gray-600">Report #{report.report_number}</p>
       </div>
 
-      {/* Meta */}
       <div className="grid grid-cols-2 gap-3 mb-5 text-sm">
         <div>
           <p className="text-gray-400 text-xs">Business Date</p>
@@ -232,7 +284,6 @@ export function ZReportDocument({ report }: { report: ZReport }) {
         </div>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <SummaryBox label="Total Orders" value={report.total_orders.toString()} />
         <SummaryBox label="Completed" value={report.completed_orders.toString()} color="text-green-600" />
@@ -240,7 +291,6 @@ export function ZReportDocument({ report }: { report: ZReport }) {
         <SummaryBox label="Discounts" value={formatETB(report.total_discounts)} color="text-orange-600" />
       </div>
 
-      {/* Revenue */}
       <div className="p-4 rounded-xl bg-green-50 border border-green-100 mb-5">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-green-700">Total Cash-on-Delivery Revenue</span>
@@ -252,13 +302,12 @@ export function ZReportDocument({ report }: { report: ZReport }) {
         </div>
       </div>
 
-      {/* Order list */}
       {orders.length > 0 && (
         <div className="mb-4">
           <h3 className="font-semibold text-sm text-gray-900 mb-2">Orders ({orders.length})</h3>
           <div className="space-y-1.5 max-h-64 overflow-y-auto">
-            {orders.map((order) => (
-              <div key={order.id} className="flex items-center justify-between text-xs py-1.5 border-b border-gray-50 last:border-0">
+            {orders.map((order, i) => (
+              <div key={order.id ?? i} className="flex items-center justify-between text-xs py-1.5 border-b border-gray-50 last:border-0">
                 <div className="min-w-0">
                   <span className="font-medium text-gray-700">{order.customer_name}</span>
                   <span className="text-gray-400 ml-2">{order.status}</span>
@@ -275,7 +324,6 @@ export function ZReportDocument({ report }: { report: ZReport }) {
         </div>
       )}
 
-      {/* Footer */}
       <div className="border-t border-gray-200 pt-3 text-center">
         <p className="text-xs text-gray-400">This report was generated electronically. Orders are archived and not deleted.</p>
       </div>
@@ -292,7 +340,7 @@ function SummaryBox({ label, value, color = 'text-gray-900' }: { label: string; 
   );
 }
 
-function generateReportText(report: ZReport): string {
+export function generateReportText(report: ZReport): string {
   const lines: string[] = [];
   lines.push('========================================');
   lines.push('       MARCILAS RESTAURANT');
@@ -300,10 +348,10 @@ function generateReportText(report: ZReport): string {
   lines.push('       Z REPORT — Daily Closing');
   lines.push('========================================');
   lines.push('');
-  lines.push(`Report #:     ${report.report_number}`);
+  lines.push(`Report #:      ${report.report_number}`);
   lines.push(`Business Date: ${report.business_date}`);
-  lines.push(`Generated At: ${formatDateTime(report.generated_at)}`);
-  lines.push(`Generated By: ${report.generated_by_name}`);
+  lines.push(`Generated At:  ${formatDateTime(report.generated_at)}`);
+  lines.push(`Generated By:  ${report.generated_by_name}`);
   lines.push('');
   lines.push('--- SUMMARY ---');
   lines.push(`Total Orders:     ${report.total_orders}`);
