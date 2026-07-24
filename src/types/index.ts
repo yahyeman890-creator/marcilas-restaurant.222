@@ -48,6 +48,8 @@ export interface Order {
   customer_name: string;
   customer_phone: string;
   delivery_address: string;
+  delivery_lat: number | null;
+  delivery_lng: number | null;
   status: OrderStatus;
   payment_status: PaymentStatus;
   total: number;

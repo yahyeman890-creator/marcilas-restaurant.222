@@ -1,28 +1,44 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, User, Loader2, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, User, Loader2, CheckCircle2, ShoppingBag, Crosshair, RefreshCw, AlertCircle } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { formatETB } from '@/lib/utils';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import { DeliveryMap } from '@/components/DeliveryMap';
 import { CustomerHeader } from '@/components/Headers';
 
 export function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [address, setAddress] = useState('');
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [name, setName] = useState(user?.full_name ?? '');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const gps = useGeolocation();
 
   const deliveryFee = 50;
   const grandTotal = totalPrice + deliveryFee;
 
+  async function handleGetLocation() {
+    try {
+      await gps.getLocation();
+    } catch {
+      // error state is set in the hook
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
+    if (!gps.lat || !gps.lng) {
+      alert('Please capture your GPS location first by tapping "Use My Location".');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -32,7 +48,9 @@ export function CheckoutPage() {
           customer_id: user?.id ?? null,
           customer_name: name,
           customer_phone: phone,
-          delivery_address: address,
+          delivery_address: `GPS: ${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`,
+          delivery_lat: gps.lat,
+          delivery_lng: gps.lng,
           status: 'pending',
           payment_status: 'unpaid',
           total: grandTotal,
@@ -74,7 +92,7 @@ export function CheckoutPage() {
           </div>
           <h2 className="font-display font-bold text-2xl text-gray-900 mb-2">Order Placed!</h2>
           <p className="text-gray-500 text-sm mb-6">
-            Your order has been received. We'll start preparing it right away. You can track it in your orders.
+            Your order has been received with your GPS location. We'll start preparing it right away. You can track it in your orders.
           </p>
           <div className="flex flex-col gap-3 items-center">
             <button onClick={() => navigate('/orders')} className="btn-primary w-full max-w-xs">
@@ -143,19 +161,51 @@ export function CheckoutPage() {
                     />
                   </div>
                 </div>
+
+                {/* GPS Location capture */}
                 <div>
-                  <label className="label">Delivery Address</label>
-                  <div className="relative">
-                    <MapPin size={18} className="absolute left-3.5 top-3.5 text-gray-400" />
-                    <textarea
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="e.g. Kebele 04, near St. Michel Church, Dire Dawa"
-                      className="input pl-11 min-h-[80px] resize-none"
-                      required
-                    />
+                  <label className="label">Delivery Location (GPS)</label>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={handleGetLocation}
+                      disabled={gps.loading}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-50 text-brand-700 font-semibold text-sm border border-brand-200 hover:bg-brand-100 transition disabled:opacity-60"
+                    >
+                      {gps.loading ? (
+                        <><Loader2 size={18} className="animate-spin" /> Capturing location...</>
+                      ) : gps.lat ? (
+                        <><Crosshair size={18} className="text-green-600" /> Location captured — tap to re-capture</>
+                      ) : (
+                        <><Crosshair size={18} /> Use My Location</>
+                      )}
+                    </button>
+
+                    {gps.error && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-100">
+                        <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-red-600">{gps.error}</p>
+                      </div>
+                    )}
+
+                    {gps.lat && gps.lng && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-100">
+                          <MapPin size={16} className="text-green-600 shrink-0" />
+                          <p className="text-xs text-green-700 font-medium">
+                            {gps.lat.toFixed(6)}, {gps.lng.toFixed(6)}
+                          </p>
+                        </div>
+                        <div className="h-56 rounded-xl overflow-hidden border border-gray-200">
+                          <DeliveryMap
+                            customerMarker={{ lat: gps.lat, lng: gps.lng, label: 'Delivery', color: 'red' }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+
                 <div>
                   <label className="label">Order Notes (optional)</label>
                   <input
@@ -213,9 +263,12 @@ export function CheckoutPage() {
                   <span className="font-bold text-lg text-brand-600">{formatETB(grandTotal)}</span>
                 </div>
               </div>
-              <button type="submit" disabled={loading} className="btn-primary w-full py-3 mt-5">
+              <button type="submit" disabled={loading || !gps.lat} className="btn-primary w-full py-3 mt-5 disabled:opacity-50">
                 {loading ? <Loader2 size={18} className="animate-spin" /> : 'Place Order'}
               </button>
+              {!gps.lat && (
+                <p className="text-xs text-gray-400 text-center mt-2">Capture your location to place the order</p>
+              )}
             </div>
           </div>
         </form>
