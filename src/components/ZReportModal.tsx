@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Printer, Download, X, Receipt, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,8 +22,6 @@ export function ZReportModal({ open, onClose, onGenerated }: Props) {
   const [report, setReport] = useState<ZReport | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
-
-  const openOrders = useMemo<Order[]>([], []);
 
   async function handleGenerate() {
     setGenerating(true);
