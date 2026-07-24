@@ -4,17 +4,11 @@
     <meta charset="utf-8" />
     <title>Marcilas</title>
     <script>
-      // GitHub Pages 404 redirect — sends all routes back to index.html
-      // so HashRouter can handle client-side routing on refresh/deep links.
-      var pathSegmentsToKeep = 1;
+      // HashRouter uses URL hashes (#/path) so all routes load index.html.
+      // This 404 page just redirects back to index.html in the same directory.
       var l = window.location;
-      l.replace(
-        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
-        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
-        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-        l.hash
-      );
+      var dir = l.pathname.substring(0, l.pathname.lastIndexOf('/') + 1);
+      l.replace(dir + 'index.html' + (l.hash || '#/'));
     </script>
   </head>
   <body></body>
