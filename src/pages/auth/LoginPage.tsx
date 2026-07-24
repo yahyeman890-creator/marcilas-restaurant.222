@@ -30,11 +30,6 @@ export function LoginPage() {
     }
   }
 
-  function fillDemo(phoneNum: string, pass: string) {
-    setPhone(phoneNum);
-    setPassword(pass);
-  }
-
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left side - branding */}
@@ -131,40 +126,6 @@ export function LoginPage() {
             <Link to="/register" className="text-brand-600 font-semibold hover:underline">Register</Link>
           </p>
 
-          {/* Demo accounts */}
-          <div className="mt-8 p-4 rounded-xl bg-white border border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Demo Accounts — Click to fill</p>
-            <div className="space-y-2">
-              <button onClick={() => fillDemo('+251911000001', 'admin123')} className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 transition text-left">
-                <div>
-                  <span className="text-sm font-medium text-gray-800">Admin</span>
-                  <span className="text-xs text-gray-400 ml-2">+251911000001 / admin123</span>
-                </div>
-                <span className="badge bg-brand-50 text-brand-700 border-brand-100">Full Access</span>
-              </button>
-              <button onClick={() => fillDemo('+251911000002', 'cashier123')} className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 transition text-left">
-                <div>
-                  <span className="text-sm font-medium text-gray-800">Cashier</span>
-                  <span className="text-xs text-gray-400 ml-2">+251911000002 / cashier123</span>
-                </div>
-                <span className="badge bg-blue-50 text-blue-700 border-blue-100">Orders</span>
-              </button>
-              <button onClick={() => fillDemo('+251911000003', 'driver123')} className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 transition text-left">
-                <div>
-                  <span className="text-sm font-medium text-gray-800">Driver</span>
-                  <span className="text-xs text-gray-400 ml-2">+251911000003 / driver123</span>
-                </div>
-                <span className="badge bg-green-50 text-green-700 border-green-100">Delivery</span>
-              </button>
-              <button onClick={() => fillDemo('+251911000004', 'customer123')} className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 transition text-left">
-                <div>
-                  <span className="text-sm font-medium text-gray-800">Customer</span>
-                  <span className="text-xs text-gray-400 ml-2">+251911000004 / customer123</span>
-                </div>
-                <span className="badge bg-amber-50 text-amber-700 border-amber-100">Order Food</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
