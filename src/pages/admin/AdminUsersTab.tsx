@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { UserPlus, Trash2, Edit3, Search, Phone, Shield, Loader2, AlertCircle, X } from 'lucide-react';
-import { supabase, AUTH_FUNCTION_URL } from '@/lib/supabase';
+import { supabase, AUTH_FUNCTION_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Profile, UserRole } from '@/types';
 import { Modal } from '@/components/Modal';
@@ -147,7 +147,7 @@ function UserFormModal({ profile, onClose, onSaved }: { profile?: Profile; onClo
 
       const res = await fetch(`${AUTH_FUNCTION_URL}?action=${action}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
         body: JSON.stringify(profile ? { ...body, id: profile.id } : body),
       });
       const data = await res.json();
@@ -217,7 +217,7 @@ function DeleteConfirmModal({ profile, onClose, onDeleted }: { profile: Profile;
     setLoading(true);
     await fetch(`${AUTH_FUNCTION_URL}?action=delete-user`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
       body: JSON.stringify({ id: profile.id }),
     });
     onDeleted();

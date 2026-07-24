@@ -5,6 +5,7 @@ const supabaseAnonKey =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvbWZ6dHF6cW12Y3NwbHR3bW5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4NDM1OTcsImV4cCI6MjEwMDQxOTU5N30.WMedfZ7HXcYlvSaK0mOC2lDXHvm9S553tWDpCn0bD2o';
 
+export { supabaseUrl, supabaseAnonKey as SUPABASE_ANON_KEY };
 export const AUTH_FUNCTION_URL = `${supabaseUrl}/functions/v1/marcilas-auth`;
 
 let _client: SupabaseClient | null = null;
