@@ -7,9 +7,10 @@ import { StaffHeader } from '@/components/Headers';
 import { AdminUsersTab } from '@/pages/admin/AdminUsersTab';
 import { AdminFoodsTab } from '@/pages/admin/AdminFoodsTab';
 import { AdminOrdersTab } from '@/pages/admin/AdminOrdersTab';
+import { AdminRevenueTab } from '@/pages/admin/AdminRevenueTab';
 import { formatETB } from '@/lib/utils';
 
-type Tab = 'overview' | 'orders' | 'foods' | 'users';
+type Tab = 'overview' | 'orders' | 'foods' | 'users' | 'revenue';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -51,6 +52,7 @@ export function AdminDashboard() {
     { value: 'orders', label: 'Orders', icon: ClipboardList },
     { value: 'foods', label: 'Foods', icon: UtensilsCrossed },
     { value: 'users', label: 'Users', icon: Users },
+    { value: 'revenue', label: 'Revenue', icon: DollarSign },
   ];
 
   return (
@@ -146,8 +148,13 @@ export function AdminDashboard() {
           <AdminOrdersTab orders={orders} onRefresh={loadData} />
         ) : tab === 'foods' ? (
           <AdminFoodsTab foods={foods} categories={categories} onRefresh={loadData} />
-        ) : (
+        ) : tab === 'users' ? (
           <AdminUsersTab profiles={profiles} onRefresh={loadData} />
+        ) : (
+          <AdminRevenueTab orders={orders} onResetStats={async () => {
+            await supabase.from('orders').update({ payment_status: 'unpaid' }).eq('payment_status', 'paid');
+            await loadData();
+          }} />
         )}
       </div>
     </div>

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { UserPlus, Trash2, Edit3, Search, Phone, Shield, Loader2, AlertCircle, X } from 'lucide-react';
+import { UserPlus, Trash2, Edit3, Search, Phone, Shield, Loader2, AlertCircle, Users, CheckSquare, Square } from 'lucide-react';
 import { supabase, AUTH_FUNCTION_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Profile, UserRole } from '@/types';
 import { Modal } from '@/components/Modal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { formatDate } from '@/lib/utils';
 
 interface Props {
@@ -18,6 +19,9 @@ export function AdminUsersTab({ profiles, onRefresh }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDelete, setBulkDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const filtered = profiles.filter((p) => {
     if (roleFilter !== 'all' && p.role !== roleFilter) return false;
@@ -27,6 +31,53 @@ export function AdminUsersTab({ profiles, onRefresh }: Props) {
     }
     return true;
   });
+
+  const deletable = filtered.filter((p) => p.id !== currentUser?.id);
+  const allDeletableSelected = deletable.length > 0 && deletable.every((p) => selected.has(p.id));
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) => {
+      if (allDeletableSelected) {
+        const next = new Set(prev);
+        deletable.forEach((p) => next.delete(p.id));
+        return next;
+      }
+      const next = new Set(prev);
+      deletable.forEach((p) => next.add(p.id));
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  async function deleteProfile(id: string) {
+    await fetch(`${AUTH_FUNCTION_URL}?action=delete-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+      body: JSON.stringify({ id }),
+    });
+  }
+
+  async function handleBulkDelete() {
+    setDeleting(true);
+    const ids = Array.from(selected);
+    await Promise.all(ids.map((id) => deleteProfile(id)));
+    setDeleting(false);
+    setBulkDelete(false);
+    clearSelection();
+    onRefresh();
+  }
 
   const roleColors: Record<UserRole, string> = {
     admin: 'bg-brand-100 text-brand-700',
@@ -60,40 +111,79 @@ export function AdminUsersTab({ profiles, onRefresh }: Props) {
         </button>
       </div>
 
+      {/* Bulk action bar */}
+      {deletable.length > 0 && (
+        <div className="flex items-center justify-between gap-3 mb-3 p-2.5 rounded-xl bg-white border border-gray-100">
+          <button onClick={toggleAll} className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-brand-600 transition">
+            {allDeletableSelected ? <CheckSquare size={18} className="text-brand-600" /> : <Square size={18} className="text-gray-400" />}
+            {allDeletableSelected ? 'Deselect all' : 'Select all'}
+          </button>
+          <div className="flex items-center gap-2">
+            {selected.size > 0 && (
+              <span className="text-sm text-gray-500">{selected.size} selected</span>
+            )}
+            {selected.size > 0 && (
+              <button
+                onClick={() => setBulkDelete(true)}
+                className="btn-secondary text-red-600 hover:bg-red-50 border-red-200 py-1.5 px-3 text-xs"
+              >
+                <Trash2 size={14} /> Delete Selected
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* User list */}
       <div className="space-y-2">
-        {filtered.map((profile) => (
-          <div key={profile.id} className="card p-3.5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center font-semibold shrink-0">
-              {profile.full_name.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <p className="font-semibold text-sm text-gray-900 truncate">{profile.full_name}</p>
-                {profile.id === currentUser?.id && <span className="text-xs text-gray-400">(You)</span>}
-              </div>
-              <div className="flex items-center gap-3 text-xs text-gray-500">
-                <span className="flex items-center gap-1"><Phone size={11} /> {profile.phone}</span>
-                <span className="hidden sm:flex items-center gap-1"><Shield size={11} /> {formatDate(profile.created_at)}</span>
-              </div>
-            </div>
-            <span className={`badge ${roleColors[profile.role]} capitalize shrink-0`}>{profile.role}</span>
-            <span className={`badge ${profile.is_active ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'} shrink-0`}>
-              {profile.is_active ? 'Active' : 'Disabled'}
-            </span>
-            <div className="flex gap-1 shrink-0">
-              <button onClick={() => setEditing(profile)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
-                <Edit3 size={16} />
-              </button>
-              {profile.id !== currentUser?.id && (
-                <button onClick={() => setDeleteTarget(profile)} className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-500">
-                  <Trash2 size={16} />
+        {filtered.map((profile) => {
+          const isSelected = selected.has(profile.id);
+          const isSelf = profile.id === currentUser?.id;
+          return (
+            <div key={profile.id} className={`card p-3.5 flex items-center gap-3 transition ${isSelected ? 'ring-2 ring-brand-400' : ''}`}>
+              {!isSelf ? (
+                <button onClick={() => toggleOne(profile.id)} className="shrink-0 p-0.5">
+                  {isSelected ? <CheckSquare size={18} className="text-brand-600" /> : <Square size={18} className="text-gray-400" />}
                 </button>
+              ) : (
+                <div className="w-[18px] shrink-0" />
               )}
+              <div className="w-10 h-10 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center font-semibold shrink-0">
+                {profile.full_name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="font-semibold text-sm text-gray-900 truncate">{profile.full_name}</p>
+                  {isSelf && <span className="text-xs text-gray-400">(You)</span>}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <span className="flex items-center gap-1"><Phone size={11} /> {profile.phone}</span>
+                  <span className="hidden sm:flex items-center gap-1"><Shield size={11} /> {formatDate(profile.created_at)}</span>
+                </div>
+              </div>
+              <span className={`badge ${roleColors[profile.role]} capitalize shrink-0`}>{profile.role}</span>
+              <span className={`badge ${profile.is_active ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'} shrink-0`}>
+                {profile.is_active ? 'Active' : 'Disabled'}
+              </span>
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => setEditing(profile)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+                  <Edit3 size={16} />
+                </button>
+                {!isSelf && (
+                  <button onClick={() => setDeleteTarget(profile)} className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-500">
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
             </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="text-center py-12">
+            <Users size={36} className="mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-400 text-sm">No users found.</p>
           </div>
-        ))}
-        {filtered.length === 0 && <p className="text-center text-gray-400 text-sm py-8">No users found.</p>}
+        )}
       </div>
 
       {showCreate && (
@@ -112,11 +202,49 @@ export function AdminUsersTab({ profiles, onRefresh }: Props) {
       )}
 
       {deleteTarget && (
-        <DeleteConfirmModal
-          profile={deleteTarget}
+        <ConfirmDialog
+          open
+          title="Delete User"
+          destructive
+          confirmLabel="Delete"
+          message={
+            <>
+              Delete <strong>{deleteTarget.full_name}</strong>?
+              <br />
+              This action cannot be undone.
+            </>
+          }
+          onConfirm={async () => {
+            setDeleting(true);
+            await deleteProfile(deleteTarget.id);
+            setDeleting(false);
+            setDeleteTarget(null);
+            onRefresh();
+          }}
           onClose={() => setDeleteTarget(null)}
-          onDeleted={() => { setDeleteTarget(null); onRefresh(); }}
         />
+      )}
+
+      <ConfirmDialog
+        open={bulkDelete}
+        title="Delete Selected Users"
+        destructive
+        confirmLabel={`Delete ${selected.size} users`}
+        message={
+          <>
+            Delete <strong>{selected.size} selected user{selected.size > 1 ? 's' : ''}</strong>?
+            <br />
+            This action cannot be undone.
+          </>
+        }
+        onConfirm={handleBulkDelete}
+        onClose={() => setBulkDelete(false)}
+      />
+
+      {deleting && (
+        <div className="fixed inset-0 z-40 bg-black/20 flex items-center justify-center">
+          <Loader2 size={32} className="animate-spin text-white" />
+        </div>
       )}
     </div>
   );
@@ -138,12 +266,10 @@ function UserFormModal({ profile, onClose, onSaved }: { profile?: Profile; onClo
 
     try {
       const body: Record<string, unknown> = { full_name: fullName, role, is_active: isActive };
-      if (!profile) body.phone = phone;
-      else body.phone = phone;
+      body.phone = phone;
       if (password) body.password = password;
 
       const action = profile ? 'update-user' : 'create-user';
-      if (!profile) body.full_name = fullName;
 
       const res = await fetch(`${AUTH_FUNCTION_URL}?action=${action}`, {
         method: 'POST',
@@ -206,39 +332,6 @@ function UserFormModal({ profile, onClose, onSaved }: { profile?: Profile; onClo
           </button>
         </div>
       </form>
-    </Modal>
-  );
-}
-
-function DeleteConfirmModal({ profile, onClose, onDeleted }: { profile: Profile; onClose: () => void; onDeleted: () => void }) {
-  const [loading, setLoading] = useState(false);
-
-  async function handleDelete() {
-    setLoading(true);
-    await fetch(`${AUTH_FUNCTION_URL}?action=delete-user`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
-      body: JSON.stringify({ id: profile.id }),
-    });
-    onDeleted();
-  }
-
-  return (
-    <Modal open onClose={onClose} title="Delete User" size="sm">
-      <div className="text-center py-2">
-        <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-          <Trash2 size={24} className="text-red-600" />
-        </div>
-        <p className="text-gray-700 mb-1">Are you sure you want to delete</p>
-        <p className="font-bold text-gray-900 mb-4">{profile.full_name}?</p>
-        <p className="text-sm text-gray-500 mb-6">This action cannot be undone.</p>
-        <div className="flex gap-3">
-          <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-          <button onClick={handleDelete} disabled={loading} className="btn-danger flex-1">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : 'Delete'}
-          </button>
-        </div>
-      </div>
     </Modal>
   );
 }
