@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth, getDashboardPath } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -111,9 +111,9 @@ function App() {
     <AuthProvider>
       <LoadingScreen />
       <CartProvider>
-        <HashRouter>
+        <BrowserRouter>
           <AppRoutes />
-        </HashRouter>
+        </BrowserRouter>
       </CartProvider>
     </AuthProvider>
   );
