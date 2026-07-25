@@ -57,25 +57,6 @@
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Smooth scrolling for in-page navigation */
-html { scroll-behavior: smooth; }
-
-/* Scroll reveal — elements start hidden and animate in when observed */
-.reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-  will-change: opacity, transform;
-}
-.reveal.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-@media (prefers-reduced-motion: reduce) {
-  .reveal { opacity: 1; transform: none; transition: none; }
-  html { scroll-behavior: auto; }
-}
-
 /* Print styles for Z Reports */
 @media print {
   body * { visibility: hidden; }
