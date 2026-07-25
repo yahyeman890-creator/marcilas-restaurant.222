@@ -3,7 +3,6 @@ import { ShoppingBag, User, LogOut, UtensilsCrossed, ClipboardList, Menu, X, Log
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { getDashboardPath } from '@/contexts/AuthContext';
 
 export function CustomerHeader() {
   const { user, logout } = useAuth();
@@ -132,7 +131,6 @@ interface StaffHeaderProps {
 export function StaffHeader({ title, subtitle }: StaffHeaderProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">

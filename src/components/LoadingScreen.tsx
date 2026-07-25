@@ -18,7 +18,7 @@ export function LoadingScreen() {
     };
 
     // The app sets this flag once React has mounted.
-    (window as any).__appReady = finish;
+    (window as unknown as { __appReady?: () => void }).__appReady = finish;
 
     // Safety timeout in case the flag is never set.
     const t = setTimeout(finish, 2500);

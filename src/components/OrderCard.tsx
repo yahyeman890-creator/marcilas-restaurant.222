@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, MapPin, Phone, User, Clock, Package } from 'lucide-react';
 import type { Order } from '@/types';
 import { formatETB, formatDateTime, timeAgo, getStatusInfo, paymentStatusInfo } from '@/lib/utils';
-import { StarRating } from '@/components/StarRating';
 
 interface OrderCardProps {
   order: Order;

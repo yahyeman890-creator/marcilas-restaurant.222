@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Cannot connect to the server. Please check your internet connection and try again.');
     }
 
-    let data: any;
+    let data: { error?: string; user?: Profile };
     try {
       data = await res.json();
     } catch {
@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!res.ok) throw new Error(data.error || 'Invalid phone number or password');
+    if (!data.user) throw new Error('Login failed: no user returned');
     setUser(data.user);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
   }
@@ -75,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Cannot connect to the server. Please check your internet connection and try again.');
     }
 
-    let data: any;
+    let data: { error?: string; user?: Profile };
     try {
       data = await res.json();
     } catch {
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!res.ok) throw new Error(data.error || 'Registration failed');
+    if (!data.user) throw new Error('Registration failed: no user returned');
     setUser(data.user);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
   }

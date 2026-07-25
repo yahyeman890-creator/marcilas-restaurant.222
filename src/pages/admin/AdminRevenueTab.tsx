@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { DollarSign, TrendingUp, ShoppingBag, RotateCcw, Calendar, Loader2 } from 'lucide-react';
+import { DollarSign, TrendingUp, ShoppingBag, RotateCcw, Calendar } from 'lucide-react';
 import type { Order } from '@/types';
 import { formatETB, formatDate } from '@/lib/utils';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -14,7 +14,7 @@ interface Props {
 export function AdminRevenueTab({ orders, onResetStats }: Props) {
   const [period, setPeriod] = useState<Period>('all');
   const [showReset, setShowReset] = useState(false);
-  const [resetting, setResetting] = useState(false);
+  const [, setResetting] = useState(false);
 
   const paidOrders = useMemo(
     () => orders.filter((o) => o.payment_status === 'paid'),

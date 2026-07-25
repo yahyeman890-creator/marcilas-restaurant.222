@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, User, Loader2, CheckCircle2, ShoppingBag, Crosshair, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, User, Loader2, CheckCircle2, ShoppingBag, Crosshair, AlertCircle } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';

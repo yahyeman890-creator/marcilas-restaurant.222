@@ -19,14 +19,15 @@ try {
 
   // Hide the loading indicator once React has rendered
   requestAnimationFrame(() => {
-    if (typeof window !== 'undefined' && (window as any).__appReady) {
-      (window as any).__appReady();
+    if (typeof window !== 'undefined') {
+      const w = window as unknown as { __appReady?: () => void };
+      if (w.__appReady) w.__appReady();
     }
   });
 } catch (err) {
   console.error('Failed to render app:', err);
-  const showError = (window as any).showError;
-  if (showError) {
-    showError(err instanceof Error ? err.message + '\n\n' + err.stack : String(err));
+  const w = window as unknown as { showError?: (msg: string) => void };
+  if (w.showError) {
+    w.showError(err instanceof Error ? err.message + '\n\n' + err.stack : String(err));
   }
 }

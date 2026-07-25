@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { UserPlus, Trash2, Edit3, Search, Phone, Shield, Loader2, AlertCircle, Users, CheckSquare, Square } from 'lucide-react';
-import { supabase, AUTH_FUNCTION_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
+import { AUTH_FUNCTION_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Profile, UserRole } from '@/types';
 import { Modal } from '@/components/Modal';

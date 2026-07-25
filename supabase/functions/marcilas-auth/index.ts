@@ -155,7 +155,14 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ error: "This is a customer account. Please log in from the main website." }, 403);
       }
 
-      const { password_hash, password_salt, ...safeProfile } = profile;
+      const safeProfile = {
+        id: profile.id,
+        full_name: profile.full_name,
+        phone: profile.phone,
+        role: profile.role,
+        is_active: profile.is_active,
+        created_at: profile.created_at,
+      };
       return jsonResponse({ user: safeProfile });
     }
 

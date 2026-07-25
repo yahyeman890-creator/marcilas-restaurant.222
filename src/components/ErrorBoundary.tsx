@@ -21,7 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error('App error:', error, info);
-    const showError = (window as any).showError;
+    const showError = (window as unknown as { showError?: (msg: string) => void }).showError;
     if (showError) {
       showError(error.message + '\n\nComponent stack:\n' + info.componentStack);
     }
