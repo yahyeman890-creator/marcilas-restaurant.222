@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import type { Food, Category } from '@/types';
 import { FoodCard } from '@/components/FoodCard';
 import { CustomerHeader } from '@/components/Headers';
+import { ContactFooter } from '@/components/ContactFooter';
 
 const ICON_MAP: Record<string, typeof Flame> = {
   Flame, Pizza, Sandwich, Soup, Wheat, Drumstick, GlassWater, IceCream, UtensilsCrossed,
@@ -171,6 +172,8 @@ export function MenuPage() {
           </>
         )}
       </div>
+
+      <ContactFooter />
     </div>
   );
 }
