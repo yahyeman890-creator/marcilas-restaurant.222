@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth, getDashboardPath } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import type { ReactNode } from 'react';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
@@ -108,6 +109,7 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
+      <LoadingScreen />
       <CartProvider>
         <HashRouter>
           <AppRoutes />
