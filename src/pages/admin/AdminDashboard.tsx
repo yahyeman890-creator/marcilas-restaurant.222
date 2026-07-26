@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, UtensilsCrossed, ClipboardList, BarChart3, DollarSign, ShoppingBag, TrendingUp, Loader2, Receipt, History } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase, AUTH_FUNCTION_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
 import type { Profile, Food, Order, Category } from '@/types';
@@ -28,7 +28,9 @@ export function AdminDashboard() {
 
   const loadData = useCallback(async () => {
     const [profilesRes, foodsRes, ordersRes, categoriesRes, todayReportRes] = await Promise.all([
-      supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+      fetch(`${AUTH_FUNCTION_URL}?action=list-users`, {
+        headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+      }).then((r) => r.json()).then((d) => ({ data: d.users ?? [], error: null })).catch(() => ({ data: [], error: null })),
       supabase.from('foods').select('*, category:categories(*)').order('created_at', { ascending: false }),
       supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
       supabase.from('categories').select('*').order('sort_order'),

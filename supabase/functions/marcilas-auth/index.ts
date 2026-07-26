@@ -166,6 +166,20 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ user: safeProfile });
     }
 
+    // ============ LIST USERS (admin only) ============
+    if (action === "list-users") {
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, phone, role, is_active, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        return jsonResponse({ error: "Failed to fetch users" }, 500);
+      }
+
+      return jsonResponse({ users: profiles ?? [] });
+    }
+
     // ============ CREATE USER (admin creates staff/customer) ============
     if (action === "create-user") {
       const { full_name, phone, password, role } = body;
