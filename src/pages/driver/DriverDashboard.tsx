@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, MapPin, Phone, CheckCircle2, Navigation, Loader2, Package, Crosshair, X } from 'lucide-react';
+import { Truck, MapPin, Phone, CheckCircle2, Navigation, Loader2, Package, Crosshair, X, Bell } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
+import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 import type { Order } from '@/types';
 import { StaffHeader } from '@/components/Headers';
 import { DeliveryMap } from '@/components/DeliveryMap';
@@ -17,6 +17,7 @@ export function DriverDashboard() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [tab, setTab] = useState<'available' | 'active' | 'delivered'>('available');
   const [mapOrder, setMapOrder] = useState<Order | null>(null);
+  const [newOrderToast, setNewOrderToast] = useState(false);
   const gps = useGeolocation();
 
   const loadOrders = useCallback(async () => {
@@ -41,7 +42,40 @@ export function DriverDashboard() {
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
-  useOrdersRealtime(loadOrders);
+  const playNewOrderBeep = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+      osc.onended = () => ctx.close();
+    } catch {
+      // audio not available
+    }
+  }, []);
+
+  useRealtimeOrders({
+    onChange: useCallback(({ eventType, new: newRow }: { eventType: string; new: Record<string, unknown> }) => {
+      loadOrders();
+      if (
+        eventType === 'INSERT' &&
+        newRow.status === 'ready' &&
+        newRow.driver_id == null
+      ) {
+        setNewOrderToast(true);
+        playNewOrderBeep();
+        setTimeout(() => setNewOrderToast(false), 4000);
+      }
+    }, [loadOrders, playNewOrderBeep]),
+  });
 
   async function acceptOrder(orderId: string) {
     if (!user) return;
@@ -290,6 +324,17 @@ export function DriverDashboard() {
                 <Navigation size={16} /> Open in Maps
               </a>
             </div>
+          </div>
+        </div>
+      )}
+
+      {newOrderToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 bg-white border border-green-200 shadow-lg rounded-xl px-4 py-3 max-w-sm">
+            <div className="w-9 h-9 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0">
+              <Bell size={18} />
+            </div>
+            <p className="font-semibold text-sm text-gray-900">New delivery task available</p>
           </div>
         </div>
       )}
