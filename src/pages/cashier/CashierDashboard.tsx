@@ -1,13 +1,32 @@
-import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, ChefHat, PackageCheck, DollarSign, ClipboardList, Loader2, Receipt } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { CheckCircle2, ChefHat, PackageCheck, DollarSign, ClipboardList, Loader2, Receipt, Bell } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Order } from '@/types';
 import { StaffHeader } from '@/components/Headers';
 import { OrderCard } from '@/components/OrderCard';
 import { ZReportModal } from '@/components/ZReportModal';
 import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
-import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
+import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 import { formatETB, getNextStatus } from '@/lib/utils';
+
+function playNewOrderBeep() {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+    osc.onended = () => ctx.close();
+  } catch {
+    // Audio not available — silent fallback
+  }
+}
 
 type Tab = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'all' | 'history';
 
@@ -18,6 +37,9 @@ export function CashierDashboard() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [zReportOpen, setZReportOpen] = useState(false);
   const [todayClosed, setTodayClosed] = useState(false);
+  const [newOrderToast, setNewOrderToast] = useState<string | null>(null);
+  const knownOrderIds = useRef<Set<string>>(new Set());
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadOrders = useCallback(async () => {
     let query = supabase
@@ -35,6 +57,10 @@ export function CashierDashboard() {
     setOrders(data ?? []);
     setLoading(false);
 
+    if (knownOrderIds.current.size === 0 && data) {
+      data.forEach((o) => knownOrderIds.current.add(o.id));
+    }
+
     const { data: todayReport } = await supabase
       .from('z_reports')
       .select('id')
@@ -48,8 +74,23 @@ export function CashierDashboard() {
     loadOrders();
   }, [loadOrders]);
 
-  // Real-time: re-fetch whenever any order changes
-  useOrdersRealtime(loadOrders);
+  // Real-time: re-fetch on any order change, and notify on new orders
+  useRealtimeOrders({
+    onChange: (payload) => {
+      loadOrders();
+      if (payload.eventType === 'INSERT' && payload.new?.id) {
+        const newId = payload.new.id as string;
+        if (!knownOrderIds.current.has(newId)) {
+          knownOrderIds.current.add(newId);
+          playNewOrderBeep();
+          const name = (payload.new as { customer_name?: string }).customer_name ?? 'New order';
+          setNewOrderToast(`New order from ${name}`);
+          if (toastTimer.current) clearTimeout(toastTimer.current);
+          toastTimer.current = setTimeout(() => setNewOrderToast(null), 4000);
+        }
+      }
+    },
+  });
 
   async function updateOrderStatus(orderId: string, status: string) {
     setUpdating(orderId);
@@ -166,6 +207,23 @@ export function CashierDashboard() {
       </div>
 
       <ZReportModal open={zReportOpen} onClose={() => setZReportOpen(false)} onGenerated={loadOrders} />
+
+      {newOrderToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 bg-white border border-brand-200 shadow-lg rounded-xl px-4 py-3 max-w-sm">
+            <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center shrink-0">
+              <Bell size={18} className="animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm text-gray-900 truncate">{newOrderToast}</p>
+              <p className="text-xs text-gray-500">Check the New Orders tab</p>
+            </div>
+            <button onClick={() => setNewOrderToast(null)} className="ml-auto text-gray-400 hover:text-gray-600 shrink-0">
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
