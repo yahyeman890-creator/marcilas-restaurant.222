@@ -187,7 +187,7 @@ export function AdminDashboard() {
             </button>
           </div>
         ) : tab === 'history' ? (
-          <ZReportsHistoryTab />
+          <ZReportsHistoryTab enableBulkDelete />
         ) : tab === 'foods' ? (
           <AdminFoodsTab foods={foods} categories={categories} onRefresh={loadData} />
         ) : tab === 'users' ? (

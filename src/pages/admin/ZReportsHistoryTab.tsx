@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ZReportDocument } from '@/components/ZReportModal';
 import { formatETB, formatDate, formatDateTime } from '@/lib/utils';
 
-export function ZReportsHistoryTab() {
+export function ZReportsHistoryTab({ enableBulkDelete = false }: { enableBulkDelete?: boolean }) {
   const [reports, setReports] = useState<ZReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -16,6 +16,10 @@ export function ZReportsHistoryTab() {
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [toast, setToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const loadReports = useCallback(async () => {
     const { data } = await supabase
@@ -103,7 +107,30 @@ export function ZReportsHistoryTab() {
             <Trash2 size={16} /> Clear History
           </button>
         )}
+        {enableBulkDelete && selectedIds.size > 0 && (
+          <button
+            onClick={() => setBulkOpen(true)}
+            className="btn-secondary text-red-600 hover:bg-red-50 border-red-200 shrink-0"
+          >
+            <Trash2 size={16} /> Delete Selected ({selectedIds.size})
+          </button>
+        )}
       </div>
+
+      {enableBulkDelete && filtered.length > 0 && (
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <input
+            type="checkbox"
+            checked={selectedIds.size === filtered.length}
+            onChange={(e) => {
+              if (e.target.checked) setSelectedIds(new Set(filtered.map((r) => r.id)));
+              else setSelectedIds(new Set());
+            }}
+            className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+          />
+          <span className="text-xs text-gray-500">Select All</span>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="text-center py-12">
@@ -114,6 +141,19 @@ export function ZReportsHistoryTab() {
         <div className="space-y-2">
           {filtered.map((report) => (
             <div key={report.id} className="card p-4 flex items-center gap-3">
+              {enableBulkDelete && (
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(report.id)}
+                  onChange={(e) => {
+                    const next = new Set(selectedIds);
+                    if (e.target.checked) next.add(report.id);
+                    else next.delete(report.id);
+                    setSelectedIds(next);
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 shrink-0"
+                />
+              )}
               <div className="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
                 <Receipt size={20} />
               </div>
@@ -181,11 +221,41 @@ export function ZReportsHistoryTab() {
           setClearing(false);
           if (error) return;
           setReports([]);
+          setSelectedIds(new Set());
           setClearOpen(false);
+          setToastMsg('Z Report history cleared successfully');
           setToast(true);
           setTimeout(() => setToast(false), 3500);
         }}
         onClose={() => setClearOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={bulkOpen}
+        title="Delete Selected Z Reports"
+        destructive
+        confirmLabel={bulkDeleting ? 'Deleting...' : 'Confirm Delete'}
+        message={
+          <>
+            Are you sure you want to delete {selectedIds.size} selected Z Report(s)?
+            <br />
+            This action cannot be undone.
+          </>
+        }
+        onConfirm={async () => {
+          setBulkDeleting(true);
+          const ids = Array.from(selectedIds);
+          const { error } = await supabase.from('z_reports').delete().in('id', ids);
+          setBulkDeleting(false);
+          if (error) return;
+          setReports((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+          setSelectedIds(new Set());
+          setBulkOpen(false);
+          setToastMsg('Selected Z Reports deleted successfully');
+          setToast(true);
+          setTimeout(() => setToast(false), 3500);
+        }}
+        onClose={() => setBulkOpen(false)}
       />
 
       {toast && (
@@ -194,7 +264,7 @@ export function ZReportsHistoryTab() {
             <div className="w-9 h-9 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0">
               <CheckCircle2 size={18} />
             </div>
-            <p className="font-semibold text-sm text-gray-900">Z Report history cleared successfully</p>
+            <p className="font-semibold text-sm text-gray-900">{toastMsg}</p>
           </div>
         </div>
       )}
