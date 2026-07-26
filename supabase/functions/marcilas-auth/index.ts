@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
-    const body = await req.json();
+    const body = req.method === "GET" || !req.body ? {} : await req.json().catch(() => ({}));
 
     // ============ REGISTER ============
     if (action === "register") {
