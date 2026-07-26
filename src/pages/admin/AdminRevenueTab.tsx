@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { DollarSign, TrendingUp, ShoppingBag, RotateCcw, Calendar } from 'lucide-react';
 import type { Order } from '@/types';
 import { formatETB, formatDate } from '@/lib/utils';
+
+const COMPLETED_STATES: string[] = ['completed', 'delivered', 'paid'];
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
@@ -16,23 +18,23 @@ export function AdminRevenueTab({ orders, onResetStats }: Props) {
   const [showReset, setShowReset] = useState(false);
   const [, setResetting] = useState(false);
 
-  const paidOrders = useMemo(
-    () => orders.filter((o) => o.payment_status === 'paid'),
+  const completedOrders = useMemo(
+    () => orders.filter((o) => COMPLETED_STATES.includes(o.status)),
     [orders],
   );
 
   const filtered = useMemo(() => {
-    if (period === 'all') return paidOrders;
+    if (period === 'all') return completedOrders;
     const now = new Date();
     const start = new Date(now);
     if (period === 'day') start.setHours(0, 0, 0, 0);
     else if (period === 'week') start.setDate(now.getDate() - 7);
     else if (period === 'month') start.setMonth(now.getMonth() - 1);
     else if (period === 'year') start.setFullYear(now.getFullYear() - 1);
-    return paidOrders.filter((o) => new Date(o.created_at) >= start);
-  }, [paidOrders, period]);
+    return completedOrders.filter((o) => new Date(o.created_at) >= start);
+  }, [completedOrders, period]);
 
-  const totalRevenue = filtered.reduce((sum, o) => sum + Number(o.total), 0);
+  const totalRevenue = filtered.reduce((sum, o) => sum + Number(o.total || 0), 0);
   const orderCount = filtered.length;
   const avgOrder = orderCount > 0 ? totalRevenue / orderCount : 0;
 

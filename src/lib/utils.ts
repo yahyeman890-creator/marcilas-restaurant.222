@@ -55,10 +55,18 @@ export function isBusinessToday(order: Pick<Order, 'business_date'>): boolean {
   return order.business_date === new Date().toISOString().slice(0, 10);
 }
 
+const COMPLETED_STATES: string[] = ['completed', 'delivered', 'paid'];
+
 export function sumShiftRevenue(orders: Order[]): number {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
   return orders
-    .filter((o) => o.status === 'delivered' && o.payment_status === 'paid')
-    .reduce((sum, o) => sum + Number(o.total), 0);
+    .filter(
+      (o) =>
+        COMPLETED_STATES.includes(o.status) &&
+        new Date(o.created_at) >= startOfToday,
+    )
+    .reduce((sum, o) => sum + Number(o.total || 0), 0);
 }
 
 export function normalizePhone(phone: string): string | null {
