@@ -4,11 +4,10 @@
     <meta charset="utf-8" />
     <title>Marcilas</title>
     <script>
-      // HashRouter uses URL hashes (#/path) so all routes load index.html.
-      // This 404 page just redirects back to index.html in the same directory.
-      var l = window.location;
-      var dir = l.pathname.substring(0, l.pathname.lastIndexOf('/') + 1);
-      l.replace(dir + 'index.html' + (l.hash || '#/'));
+      // BrowserRouter uses clean URLs. If a 404.html is served directly
+      // (e.g. by a static host without SPA fallback), redirect to root
+      // so React Router can handle the route client-side.
+      window.location.replace('/');
     </script>
   </head>
   <body></body>
