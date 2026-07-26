@@ -99,7 +99,7 @@ export function ZReportsHistoryTab({ enableBulkDelete = false }: { enableBulkDel
             Clear Date
           </button>
         )}
-        {reports.length > 0 && (
+        {enableBulkDelete && reports.length > 0 && (
           <button
             onClick={() => setClearOpen(true)}
             className="btn-secondary text-red-600 hover:bg-red-50 border-red-200 shrink-0"
@@ -203,32 +203,34 @@ export function ZReportsHistoryTab({ enableBulkDelete = false }: { enableBulkDel
         </Modal>
       )}
 
-      <ConfirmDialog
-        open={clearOpen}
-        title="Clear Z Report History"
-        destructive
-        confirmLabel={clearing ? 'Clearing...' : 'Confirm Clear'}
-        message={
-          <>
-            Are you sure you want to clear all past Z Report history?
-            <br />
-            This action cannot be undone.
-          </>
-        }
-        onConfirm={async () => {
-          setClearing(true);
-          const { error } = await supabase.from('z_reports').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-          setClearing(false);
-          if (error) return;
-          setReports([]);
-          setSelectedIds(new Set());
-          setClearOpen(false);
-          setToastMsg('Z Report history cleared successfully');
-          setToast(true);
-          setTimeout(() => setToast(false), 3500);
-        }}
-        onClose={() => setClearOpen(false)}
-      />
+      {enableBulkDelete && (
+        <ConfirmDialog
+          open={clearOpen}
+          title="Clear Z Report History"
+          destructive
+          confirmLabel={clearing ? 'Clearing...' : 'Confirm Clear'}
+          message={
+            <>
+              Are you sure you want to clear all past Z Report history?
+              <br />
+              This action cannot be undone.
+            </>
+          }
+          onConfirm={async () => {
+            setClearing(true);
+            const { error } = await supabase.from('z_reports').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            setClearing(false);
+            if (error) return;
+            setReports([]);
+            setSelectedIds(new Set());
+            setClearOpen(false);
+            setToastMsg('Z Report history cleared successfully');
+            setToast(true);
+            setTimeout(() => setToast(false), 3500);
+          }}
+          onClose={() => setClearOpen(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={bulkOpen}
