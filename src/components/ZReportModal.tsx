@@ -106,7 +106,7 @@ export function ZReportModal({ open, onClose, onGenerated }: Props) {
 
       setReport(newReport as ZReport);
       setStep('result');
-      onGenerated();
+      await onGenerated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate Z Report');
       setStep('preview');

@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
   const sizeClass = size === 'sm' ? 'max-w-md' : size === 'lg' ? 'max-w-3xl' : 'max-w-xl';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center ${open ? '' : 'pointer-events-none'}`}>
       <div
         className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`}
         onClick={onClose}
