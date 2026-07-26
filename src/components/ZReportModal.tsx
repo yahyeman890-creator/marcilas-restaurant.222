@@ -64,7 +64,7 @@ export function ZReportModal({ open, onClose, onGenerated }: Props) {
       const completedOrders = orderList.filter((o) => o.status === 'delivered').length;
       const cancelledOrders = orderList.filter((o) => o.status === 'cancelled').length;
       const totalRevenue = orderList
-        .filter((o) => o.payment_status === 'paid')
+        .filter((o) => o.status === 'delivered' && o.payment_status === 'paid')
         .reduce((sum, o) => sum + Number(o.total), 0);
 
       const { data: lastReport } = await supabase

@@ -55,9 +55,9 @@ export function isBusinessToday(order: Pick<Order, 'business_date'>): boolean {
   return order.business_date === new Date().toISOString().slice(0, 10);
 }
 
-export function sumDeliveredRevenueToday(orders: Order[]): number {
+export function sumShiftRevenue(orders: Order[]): number {
   return orders
-    .filter((o) => o.status === 'delivered' && o.payment_status === 'paid' && isBusinessToday(o))
+    .filter((o) => o.status === 'delivered' && o.payment_status === 'paid')
     .reduce((sum, o) => sum + Number(o.total), 0);
 }
 

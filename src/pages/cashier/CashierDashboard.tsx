@@ -7,7 +7,7 @@ import { OrderCard } from '@/components/OrderCard';
 import { ZReportModal } from '@/components/ZReportModal';
 import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
-import { formatETB, getNextStatus, sumDeliveredRevenueToday } from '@/lib/utils';
+import { formatETB, getNextStatus, sumShiftRevenue } from '@/lib/utils';
 
 function playNewOrderBeep() {
   try {
@@ -130,7 +130,7 @@ export function CashierDashboard() {
     [allActiveOrders],
   );
   const revenueToday = useMemo(
-    () => sumDeliveredRevenueToday(allActiveOrders),
+    () => sumShiftRevenue(allActiveOrders),
     [allActiveOrders],
   );
 

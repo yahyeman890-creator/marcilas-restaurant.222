@@ -11,7 +11,7 @@ import { AdminOrdersTab } from '@/pages/admin/AdminOrdersTab';
 import { AdminRevenueTab } from '@/pages/admin/AdminRevenueTab';
 import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
 import { ZReportModal } from '@/components/ZReportModal';
-import { formatETB, isBusinessToday } from '@/lib/utils';
+import { formatETB, sumShiftRevenue } from '@/lib/utils';
 
 type Tab = 'overview' | 'orders' | 'foods' | 'users' | 'revenue' | 'zreport' | 'history';
 
@@ -52,10 +52,7 @@ export function AdminDashboard() {
   useOrdersRealtime(loadData);
 
   const activeOrders = orders.filter((o) => !o.z_report_id);
-  const todayOrders = orders.filter((o) => isBusinessToday(o));
-  const todayRevenue = todayOrders
-    .filter((o) => o.status === 'delivered' && o.payment_status === 'paid')
-    .reduce((sum, o) => sum + Number(o.total), 0);
+  const todayRevenue = sumShiftRevenue(activeOrders);
   const activeInProgress = activeOrders.filter(
     (o) => o.status === 'pending' || o.status === 'confirmed' || o.status === 'preparing' || o.status === 'ready' || o.status === 'out_for_delivery',
   ).length;
