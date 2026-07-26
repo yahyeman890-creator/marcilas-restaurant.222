@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, Eye, Printer, Download, Receipt, Loader2, Calendar } from 'lucide-react';
+import { Search, Eye, Printer, Download, Receipt, Loader2, Calendar, Trash2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { ZReport } from '@/types';
 import { Modal } from '@/components/Modal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ZReportDocument } from '@/components/ZReportModal';
 import { formatETB, formatDate, formatDateTime } from '@/lib/utils';
 
@@ -12,6 +13,9 @@ export function ZReportsHistoryTab() {
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [viewing, setViewing] = useState<ZReport | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [toast, setToast] = useState(false);
 
   const loadReports = useCallback(async () => {
     const { data } = await supabase
@@ -91,6 +95,14 @@ export function ZReportsHistoryTab() {
             Clear Date
           </button>
         )}
+        {reports.length > 0 && (
+          <button
+            onClick={() => setClearOpen(true)}
+            className="btn-secondary text-red-600 hover:bg-red-50 border-red-200 shrink-0"
+          >
+            <Trash2 size={16} /> Clear History
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -149,6 +161,42 @@ export function ZReportsHistoryTab() {
             </button>
           </div>
         </Modal>
+      )}
+
+      <ConfirmDialog
+        open={clearOpen}
+        title="Clear Z Report History"
+        destructive
+        confirmLabel={clearing ? 'Clearing...' : 'Confirm Clear'}
+        message={
+          <>
+            Are you sure you want to clear all past Z Report history?
+            <br />
+            This action cannot be undone.
+          </>
+        }
+        onConfirm={async () => {
+          setClearing(true);
+          const { error } = await supabase.from('z_reports').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          setClearing(false);
+          if (error) return;
+          setReports([]);
+          setClearOpen(false);
+          setToast(true);
+          setTimeout(() => setToast(false), 3500);
+        }}
+        onClose={() => setClearOpen(false)}
+      />
+
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 bg-white border border-green-200 shadow-lg rounded-xl px-4 py-3 max-w-sm">
+            <div className="w-9 h-9 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={18} />
+            </div>
+            <p className="font-semibold text-sm text-gray-900">Z Report history cleared successfully</p>
+          </div>
+        </div>
       )}
     </div>
   );
