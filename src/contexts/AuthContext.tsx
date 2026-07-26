@@ -20,15 +20,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
+    const fallback = setTimeout(() => setLoading(false), 3000);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed.id === 'string' && typeof parsed.role === 'string') {
+          setUser(parsed);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
       }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    } finally {
+      clearTimeout(fallback);
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   async function login(phone: string, password: string, clientType: 'public' | 'staff' = 'public') {

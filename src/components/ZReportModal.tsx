@@ -106,7 +106,11 @@ export function ZReportModal({ open, onClose, onGenerated }: Props) {
 
       setReport(newReport as ZReport);
       setStep('result');
-      await onGenerated();
+      try {
+        await onGenerated();
+      } catch {
+        // Re-fetch failure shouldn't block the result view — the report was created.
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate Z Report');
       setStep('preview');
