@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { CheckCircle2, ChefHat, PackageCheck, DollarSign, ClipboardList, Loader2, Receipt, Bell, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Order } from '@/types';
@@ -7,7 +7,7 @@ import { OrderCard } from '@/components/OrderCard';
 import { ZReportModal } from '@/components/ZReportModal';
 import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
-import { formatETB, getNextStatus } from '@/lib/utils';
+import { formatETB, getNextStatus, sumDeliveredRevenueToday } from '@/lib/utils';
 
 function playNewOrderBeep() {
   try {
@@ -32,6 +32,7 @@ type Tab = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'all' | 'history';
 
 export function CashierDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [allActiveOrders, setAllActiveOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('pending');
   const [updating, setUpdating] = useState<string | null>(null);
@@ -53,20 +54,29 @@ export function CashierDashboard() {
     else if (tab === 'preparing') query = query.eq('status', 'preparing');
     else if (tab === 'ready') query = query.eq('status', 'ready');
 
-    const { data } = await query;
-    setOrders(data ?? []);
+    const [tabRes, allRes, todayReportRes] = await Promise.all([
+      query,
+      supabase
+        .from('orders')
+        .select('*, order_items(*)')
+        .is('z_report_id', null)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('z_reports')
+        .select('id')
+        .eq('business_date', new Date().toISOString().slice(0, 10))
+        .maybeSingle(),
+    ]);
+
+    setOrders(tabRes.data ?? []);
+    setAllActiveOrders(allRes.data ?? []);
     setLoading(false);
 
-    if (knownOrderIds.current.size === 0 && data) {
-      data.forEach((o) => knownOrderIds.current.add(o.id));
+    if (knownOrderIds.current.size === 0 && allRes.data) {
+      allRes.data.forEach((o) => knownOrderIds.current.add(o.id));
     }
 
-    const { data: todayReport } = await supabase
-      .from('z_reports')
-      .select('id')
-      .eq('business_date', new Date().toISOString().slice(0, 10))
-      .maybeSingle();
-    setTodayClosed(!!todayReport);
+    setTodayClosed(!!todayReportRes.data);
   }, [tab]);
 
   useEffect(() => {
@@ -107,6 +117,23 @@ export function CashierDashboard() {
     loadOrders();
   }
 
+  const newCount = useMemo(
+    () => allActiveOrders.filter((o) => o.status === 'pending').length,
+    [allActiveOrders],
+  );
+  const preparingCount = useMemo(
+    () => allActiveOrders.filter((o) => o.status === 'confirmed' || o.status === 'preparing').length,
+    [allActiveOrders],
+  );
+  const readyCount = useMemo(
+    () => allActiveOrders.filter((o) => o.status === 'ready').length,
+    [allActiveOrders],
+  );
+  const revenueToday = useMemo(
+    () => sumDeliveredRevenueToday(allActiveOrders),
+    [allActiveOrders],
+  );
+
   const tabs: { value: Tab; label: string; count?: number }[] = [
     { value: 'pending', label: 'New Orders' },
     { value: 'confirmed', label: 'Confirmed' },
@@ -123,10 +150,10 @@ export function CashierDashboard() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <StatCard icon={ClipboardList} label="New" value={orders.filter((o) => o.status === 'pending').length} color="text-amber-600 bg-amber-50" />
-          <StatCard icon={ChefHat} label="Preparing" value={orders.filter((o) => o.status === 'preparing').length} color="text-purple-600 bg-purple-50" />
-          <StatCard icon={PackageCheck} label="Ready" value={orders.filter((o) => o.status === 'ready').length} color="text-cyan-600 bg-cyan-50" />
-          <StatCard icon={DollarSign} label="Revenue" value={formatETB(orders.filter((o) => o.payment_status === 'paid').reduce((s, o) => s + Number(o.total), 0))} color="text-green-600 bg-green-50" />
+          <StatCard icon={ClipboardList} label="New" value={newCount} color="text-amber-600 bg-amber-50" />
+          <StatCard icon={ChefHat} label="Preparing" value={preparingCount} color="text-purple-600 bg-purple-50" />
+          <StatCard icon={PackageCheck} label="Ready" value={readyCount} color="text-cyan-600 bg-cyan-50" />
+          <StatCard icon={DollarSign} label="Revenue" value={formatETB(revenueToday)} color="text-green-600 bg-green-50" />
         </div>
 
         {/* Z Report button */}

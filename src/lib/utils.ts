@@ -1,4 +1,4 @@
-import type { OrderStatus, PaymentStatus } from '@/types';
+import type { OrderStatus, PaymentStatus, Order } from '@/types';
 
 export const ORDER_STATUSES: { value: OrderStatus; label: string; color: string; step: number }[] = [
   { value: 'pending', label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200', step: 0 },
@@ -49,6 +49,16 @@ export function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours} hr ago`;
   const days = Math.floor(hours / 24);
   return `${days} day${days > 1 ? 's' : ''} ago`;
+}
+
+export function isBusinessToday(order: Pick<Order, 'business_date'>): boolean {
+  return order.business_date === new Date().toISOString().slice(0, 10);
+}
+
+export function sumDeliveredRevenueToday(orders: Order[]): number {
+  return orders
+    .filter((o) => o.status === 'delivered' && o.payment_status === 'paid' && isBusinessToday(o))
+    .reduce((sum, o) => sum + Number(o.total), 0);
 }
 
 export function normalizePhone(phone: string): string | null {

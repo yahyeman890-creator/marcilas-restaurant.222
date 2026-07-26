@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, MapPin, Phone, CheckCircle2, Navigation, Loader2, Package, Crosshair, X, Bell } from 'lucide-react';
+import { Truck, MapPin, Phone, CheckCircle2, Navigation, Loader2, Package, Crosshair, X, Bell, DollarSign } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -7,7 +7,7 @@ import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 import type { Order } from '@/types';
 import { StaffHeader } from '@/components/Headers';
 import { DeliveryMap } from '@/components/DeliveryMap';
-import { formatETB, formatDateTime } from '@/lib/utils';
+import { formatETB, formatDateTime, isBusinessToday } from '@/lib/utils';
 
 export function DriverDashboard() {
   const { user } = useAuth();
@@ -113,9 +113,11 @@ export function DriverDashboard() {
   }
 
   const activeDeliveries = myOrders.filter((o) => o.status === 'out_for_delivery');
-  const deliveredOrders = myOrders.filter((o) => o.status === 'delivered');
+  const deliveredToday = myOrders.filter((o) => o.status === 'delivered' && isBusinessToday(o));
+  const completedTodayCount = deliveredToday.length;
+  const earningsToday = deliveredToday.reduce((sum, o) => sum + Number(o.total), 0);
 
-  const displayOrders = tab === 'available' ? availableOrders : tab === 'active' ? activeDeliveries : deliveredOrders;
+  const displayOrders = tab === 'available' ? availableOrders : tab === 'active' ? activeDeliveries : deliveredToday;
 
   const mapCustomerMarker =
     mapOrder && mapOrder.delivery_lat && mapOrder.delivery_lng
@@ -133,10 +135,11 @@ export function DriverDashboard() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <StatCard icon={Package} label="Available" value={availableOrders.length} color="text-cyan-600 bg-cyan-50" />
-          <StatCard icon={Truck} label="In Transit" value={activeDeliveries.length} color="text-indigo-600 bg-indigo-50" />
-          <StatCard icon={CheckCircle2} label="Delivered" value={deliveredOrders.length} color="text-green-600 bg-green-50" />
+          <StatCard icon={Truck} label="Active Delivery" value={activeDeliveries.length} color="text-indigo-600 bg-indigo-50" />
+          <StatCard icon={CheckCircle2} label="Completed Today" value={completedTodayCount} color="text-green-600 bg-green-50" />
+          <StatCard icon={DollarSign} label="Earnings Today" value={formatETB(earningsToday)} color="text-emerald-600 bg-emerald-50" />
         </div>
 
         {/* Driver location capture */}
@@ -342,7 +345,7 @@ export function DriverDashboard() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, color }: { icon: typeof Truck; label: string; value: number; color: string }) {
+function StatCard({ icon: Icon, label, value, color }: { icon: typeof Truck; label: string; value: number | string; color: string }) {
   return (
     <div className="card p-3.5">
       <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center mb-2`}>

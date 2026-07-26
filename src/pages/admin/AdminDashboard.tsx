@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, UtensilsCrossed, ClipboardList, BarChart3, DollarSign, ShoppingBag, TrendingUp, Loader2, Receipt, History } from 'lucide-react';
+import { Users, UtensilsCrossed, ClipboardList, BarChart3, DollarSign, ShoppingBag, Loader2, Receipt, History, Truck } from 'lucide-react';
 import { supabase, AUTH_FUNCTION_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdersRealtime } from '@/hooks/useRealtimeOrders';
@@ -11,7 +11,7 @@ import { AdminOrdersTab } from '@/pages/admin/AdminOrdersTab';
 import { AdminRevenueTab } from '@/pages/admin/AdminRevenueTab';
 import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
 import { ZReportModal } from '@/components/ZReportModal';
-import { formatETB } from '@/lib/utils';
+import { formatETB, isBusinessToday } from '@/lib/utils';
 
 type Tab = 'overview' | 'orders' | 'foods' | 'users' | 'revenue' | 'zreport' | 'history';
 
@@ -52,12 +52,18 @@ export function AdminDashboard() {
   useOrdersRealtime(loadData);
 
   const activeOrders = orders.filter((o) => !o.z_report_id);
-  const totalRevenue = activeOrders
-    .filter((o) => o.payment_status === 'paid')
+  const todayOrders = orders.filter((o) => isBusinessToday(o));
+  const todayRevenue = todayOrders
+    .filter((o) => o.status === 'delivered' && o.payment_status === 'paid')
     .reduce((sum, o) => sum + Number(o.total), 0);
+  const activeInProgress = activeOrders.filter(
+    (o) => o.status === 'pending' || o.status === 'confirmed' || o.status === 'preparing' || o.status === 'ready' || o.status === 'out_for_delivery',
+  ).length;
   const totalOrders = activeOrders.length;
   const pendingOrders = activeOrders.filter((o) => o.status === 'pending').length;
   const totalCustomers = profiles.filter((p) => p.role === 'customer').length;
+  const totalDrivers = profiles.filter((p) => p.role === 'driver').length;
+  const totalCashiers = profiles.filter((p) => p.role === 'cashier').length;
   const totalStaff = profiles.filter((p) => p.role !== 'customer').length;
 
   const tabs: { value: Tab; label: string; icon: typeof Users }[] = [
@@ -101,10 +107,10 @@ export function AdminDashboard() {
           <div>
             {/* Stats grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-              <StatCard icon={DollarSign} label="Total Revenue" value={formatETB(totalRevenue)} color="text-green-600 bg-green-50" />
-              <StatCard icon={ShoppingBag} label="Total Orders" value={totalOrders} color="text-blue-600 bg-blue-50" />
-              <StatCard icon={TrendingUp} label="Pending Orders" value={pendingOrders} color="text-amber-600 bg-amber-50" />
-              <StatCard icon={Users} label="Total Users" value={profiles.length} color="text-purple-600 bg-purple-50" />
+              <StatCard icon={DollarSign} label="Today's Revenue" value={formatETB(todayRevenue)} color="text-green-600 bg-green-50" />
+              <StatCard icon={ShoppingBag} label="Active Orders" value={activeInProgress} color="text-blue-600 bg-blue-50" />
+              <StatCard icon={Users} label="Customers" value={totalCustomers} color="text-amber-600 bg-amber-50" />
+              <StatCard icon={Truck} label="Drivers / Cashiers" value={`${totalDrivers} / ${totalCashiers}`} color="text-purple-600 bg-purple-50" />
             </div>
 
             <div className="grid lg:grid-cols-2 gap-4">
