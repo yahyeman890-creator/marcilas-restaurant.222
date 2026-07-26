@@ -192,7 +192,7 @@ export function AdminDashboard() {
           <AdminUsersTab profiles={profiles} onRefresh={loadData} />
         ) : (
           <AdminRevenueTab orders={orders} onResetStats={async () => {
-            await supabase.from('orders').update({ payment_status: 'unpaid' }).eq('payment_status', 'paid');
+            await supabase.from('orders').update({ payment_status: 'unpaid' }).eq('payment_status', 'paid').is('z_report_id', null);
             await loadData();
           }} />
         )}
