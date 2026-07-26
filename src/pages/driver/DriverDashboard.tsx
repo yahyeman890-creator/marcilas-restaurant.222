@@ -18,6 +18,7 @@ export function DriverDashboard() {
   const [tab, setTab] = useState<'available' | 'active' | 'delivered'>('available');
   const [mapOrder, setMapOrder] = useState<Order | null>(null);
   const [newOrderToast, setNewOrderToast] = useState(false);
+  const [claimFailToast, setClaimFailToast] = useState<string | null>(null);
   const gps = useGeolocation();
 
   const loadOrders = useCallback(async () => {
@@ -80,7 +81,22 @@ export function DriverDashboard() {
   async function acceptOrder(orderId: string) {
     if (!user) return;
     setUpdating(orderId);
-    await supabase
+
+    const { data: existing } = await supabase
+      .from('orders')
+      .select('id, driver_id, status')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (!existing || existing.driver_id || existing.status !== 'ready') {
+      setUpdating(null);
+      setClaimFailToast('This delivery was just taken by another driver.');
+      setTimeout(() => setClaimFailToast(null), 3500);
+      loadOrders();
+      return;
+    }
+
+    const { error } = await supabase
       .from('orders')
       .update({
         driver_id: user.id,
@@ -89,8 +105,17 @@ export function DriverDashboard() {
         status: 'out_for_delivery',
         updated_at: new Date().toISOString(),
       })
+      .is('driver_id', null)
+      .eq('status', 'ready')
       .eq('id', orderId);
+
     setUpdating(null);
+    if (error) {
+      setClaimFailToast('This delivery was just taken by another driver.');
+      setTimeout(() => setClaimFailToast(null), 3500);
+      loadOrders();
+      return;
+    }
     loadOrders();
   }
 
@@ -327,6 +352,17 @@ export function DriverDashboard() {
                 <Navigation size={16} /> Open in Maps
               </a>
             </div>
+          </div>
+        </div>
+      )}
+
+      {claimFailToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 bg-white border border-red-200 shadow-lg rounded-xl px-4 py-3 max-w-sm">
+            <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <Bell size={18} />
+            </div>
+            <p className="font-semibold text-sm text-gray-900">{claimFailToast}</p>
           </div>
         </div>
       )}
