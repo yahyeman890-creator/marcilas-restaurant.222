@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { CheckCircle2, ChefHat, PackageCheck, DollarSign, ClipboardList, Loader2, Receipt, Bell } from 'lucide-react';
+import { CheckCircle2, ChefHat, PackageCheck, DollarSign, ClipboardList, Loader2, Receipt, Bell, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Order } from '@/types';
 import { StaffHeader } from '@/components/Headers';
@@ -137,7 +137,15 @@ export function CashierDashboard() {
         </div>
 
         {tab === 'history' ? (
-          <ZReportsHistoryTab />
+          <div>
+            <button
+              onClick={() => setTab('pending')}
+              className="btn-secondary mb-4"
+            >
+              <ArrowLeft size={16} /> Back to New Orders
+            </button>
+            <ZReportsHistoryTab />
+          </div>
         ) : (
         <>
         {/* Tabs */}
