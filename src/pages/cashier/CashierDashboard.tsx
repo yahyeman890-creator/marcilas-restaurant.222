@@ -179,7 +179,7 @@ export function CashierDashboard() {
               return (
                 <OrderCard key={order.id} order={order} defaultOpen={order.status === 'pending'}>
                   <div className="flex flex-wrap gap-2">
-                    {next && order.status !== 'cancelled' && order.status !== 'delivered' && (
+                    {next && order.status !== 'cancelled' && order.status !== 'delivered' && order.status !== 'ready' && (
                       <button
                         onClick={() => updateOrderStatus(order.id, next)}
                         disabled={updating === order.id}
@@ -189,8 +189,12 @@ export function CashierDashboard() {
                         {order.status === 'pending' && <><CheckCircle2 size={14} /> Confirm Order</>}
                         {order.status === 'confirmed' && <><ChefHat size={14} /> Start Preparing</>}
                         {order.status === 'preparing' && <><PackageCheck size={14} /> Mark Ready</>}
-                        {order.status === 'ready' && <><PackageCheck size={14} /> Send to Delivery</>}
                       </button>
+                    )}
+                    {order.status === 'ready' && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2">
+                        <PackageCheck size={14} /> Awaiting Driver
+                      </span>
                     )}
                     <button
                       onClick={() => togglePayment(order.id, order.payment_status)}
