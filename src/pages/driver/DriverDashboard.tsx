@@ -30,11 +30,13 @@ export function DriverDashboard() {
           .select('*, order_items(*)')
           .eq('status', 'ready')
           .is('driver_id', null)
+          .is('z_report_id', null)
           .order('created_at', { ascending: false }),
         supabase
           .from('orders')
           .select('*, order_items(*)')
           .eq('driver_id', user.id)
+          .is('z_report_id', null)
           .order('created_at', { ascending: false }),
       ]);
       setAvailableOrders(availRes.data ?? []);
