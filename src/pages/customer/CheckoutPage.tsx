@@ -21,7 +21,18 @@ export function CheckoutPage() {
   const gps = useGeolocation();
 
   const deliveryFee = 50;
-  const grandTotal = totalPrice + deliveryFee;
+  const [tipAmount, setTipAmount] = useState(0);
+  const [customTip, setCustomTip] = useState('');
+  const orderTotal = totalPrice + deliveryFee;
+  const grandTotal = orderTotal + tipAmount;
+
+  const tipOptions = [0, 15, 20, 50, 100];
+
+  function handleCustomTip(value: string) {
+    setCustomTip(value);
+    const parsed = parseInt(value, 10);
+    setTipAmount(!isNaN(parsed) && parsed > 0 ? parsed : 0);
+  }
 
   async function handleGetLocation() {
     try {
@@ -53,7 +64,8 @@ export function CheckoutPage() {
           delivery_lng: gps.lng,
           status: 'pending',
           payment_status: 'unpaid',
-          total: grandTotal,
+          total: orderTotal,
+          delivery_tip: tipAmount,
           notes: notes || null,
         })
         .select()
@@ -231,6 +243,39 @@ export function CheckoutPage() {
                 </div>
               </div>
             </div>
+
+            {/* Delivery Tip */}
+            <div className="card p-5">
+              <h2 className="font-semibold text-sm text-gray-900 mb-1">Delivery Tip</h2>
+              <p className="text-xs text-gray-500 mb-4">Show appreciation for your driver. 100% goes to them.</p>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {tipOptions.map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => { setTipAmount(amt); setCustomTip(''); }}
+                    className={`rounded-xl py-2.5 text-sm font-semibold border transition ${
+                      tipAmount === amt && !customTip
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {amt === 0 ? 'No Tip' : `${amt} ETB`}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="label">Custom Tip (ETB)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={customTip}
+                  onChange={(e) => handleCustomTip(e.target.value)}
+                  placeholder="Enter amount"
+                  className="input"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Order summary */}
@@ -258,6 +303,12 @@ export function CheckoutPage() {
                   <span className="text-gray-600">Delivery Fee</span>
                   <span className="font-medium">{formatETB(deliveryFee)}</span>
                 </div>
+                {tipAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Driver Tip</span>
+                    <span className="font-medium text-green-600">{formatETB(tipAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 border-t border-gray-100">
                   <span className="font-bold text-gray-900">Total</span>
                   <span className="font-bold text-lg text-brand-600">{formatETB(grandTotal)}</span>

@@ -82,9 +82,13 @@ export function OrderCard({ order, children, defaultOpen = false }: OrderCardPro
           </div>
 
           {/* Total */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100 mb-3">
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100 mb-1">
             <span className="font-semibold text-gray-900">Total</span>
             <span className="font-bold text-brand-600">{formatETB(order.total)}</span>
+          </div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm text-gray-500">Delivery Tip</span>
+            <span className="text-sm font-medium text-green-600">{formatETB(order.delivery_tip ?? 0)}</span>
           </div>
 
           {/* Driver info */}

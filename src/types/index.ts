@@ -53,6 +53,7 @@ export interface Order {
   status: OrderStatus;
   payment_status: PaymentStatus;
   total: number;
+  delivery_tip: number;
   driver_id: string | null;
   driver_name: string | null;
   driver_phone: string | null;

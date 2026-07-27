@@ -148,6 +148,8 @@ export function DriverDashboard() {
   const deliveredToday = myOrders.filter((o) => o.status === 'delivered' && isBusinessToday(o));
   const completedTodayCount = deliveredToday.length;
   const earningsToday = deliveredToday.reduce((sum, o) => sum + Number(o.total), 0);
+  const tipsToday = deliveredToday.reduce((sum, o) => sum + Number(o.delivery_tip ?? 0), 0);
+  const totalTips = myOrders.filter((o) => o.status === 'delivered').reduce((sum, o) => sum + Number(o.delivery_tip ?? 0), 0);
 
   const displayOrders = tab === 'available' ? availableOrders : tab === 'active' ? activeDeliveries : deliveredToday;
 
@@ -170,8 +172,12 @@ export function DriverDashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <StatCard icon={Package} label="Available" value={availableOrders.length} color="text-cyan-600 bg-cyan-50" />
           <StatCard icon={Truck} label="Active Delivery" value={activeDeliveries.length} color="text-indigo-600 bg-indigo-50" />
-          <StatCard icon={CheckCircle2} label="Completed Today" value={completedTodayCount} color="text-green-600 bg-green-50" />
           <StatCard icon={DollarSign} label="Earnings Today" value={formatETB(earningsToday)} color="text-emerald-600 bg-emerald-50" />
+          <StatCard icon={DollarSign} label="Today's Tips" value={formatETB(tipsToday)} color="text-green-600 bg-green-50" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <StatCard icon={CheckCircle2} label="Completed Today" value={completedTodayCount} color="text-green-600 bg-green-50" />
+          <StatCard icon={DollarSign} label="Total Tips" value={formatETB(totalTips)} color="text-green-600 bg-green-50" />
         </div>
 
         {/* Driver location capture */}
@@ -241,6 +247,9 @@ export function DriverDashboard() {
                       <span className="text-xs text-gray-400">{formatDateTime(order.created_at)}</span>
                     </div>
                     <p className="font-bold text-brand-600">{formatETB(order.total)}</p>
+                    {Number(order.delivery_tip ?? 0) > 0 && (
+                      <p className="text-sm font-medium text-green-600">+ {formatETB(order.delivery_tip)} tip</p>
+                    )}
                   </div>
                   <Package size={20} className="text-gray-300" />
                 </div>
