@@ -47,7 +47,7 @@ export function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     loadData();
