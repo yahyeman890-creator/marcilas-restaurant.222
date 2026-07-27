@@ -15,13 +15,18 @@ export function OrdersPage() {
 
   async function loadOrders() {
     if (!user) return;
-    const { data } = await supabase
-      .from('orders')
-      .select('*, order_items(*)')
-      .eq('customer_id', user.id)
-      .order('created_at', { ascending: false });
-    setOrders(data ?? []);
-    setLoading(false);
+    try {
+      const { data } = await supabase
+        .from('orders')
+        .select('*, order_items(*)')
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false });
+      setOrders(data ?? []);
+    } catch {
+      // network error — keep existing orders, don't freeze
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { if (user) loadOrders(); }, [user]); // eslint-disable-line react-hooks/exhaustive-deps

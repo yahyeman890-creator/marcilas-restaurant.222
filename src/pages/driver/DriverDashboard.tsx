@@ -23,22 +23,27 @@ export function DriverDashboard() {
 
   const loadOrders = useCallback(async () => {
     if (!user) return;
-    const [availRes, myRes] = await Promise.all([
-      supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .eq('status', 'ready')
-        .is('driver_id', null)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .eq('driver_id', user.id)
-        .order('created_at', { ascending: false }),
-    ]);
-    setAvailableOrders(availRes.data ?? []);
-    setMyOrders(myRes.data ?? []);
-    setLoading(false);
+    try {
+      const [availRes, myRes] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .eq('status', 'ready')
+          .is('driver_id', null)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .eq('driver_id', user.id)
+          .order('created_at', { ascending: false }),
+      ]);
+      setAvailableOrders(availRes.data ?? []);
+      setMyOrders(myRes.data ?? []);
+    } catch {
+      // network error — keep existing data, don't freeze
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);

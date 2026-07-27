@@ -19,13 +19,18 @@ export function MenuPage() {
 
   useEffect(() => {
     async function loadData() {
-      const [foodsRes, categoriesRes] = await Promise.all([
-        supabase.from('foods').select('*, category:categories(*)').order('name'),
-        supabase.from('categories').select('*').order('sort_order'),
-      ]);
-      setFoods(foodsRes.data ?? []);
-      setCategories(categoriesRes.data ?? []);
-      setLoading(false);
+      try {
+        const [foodsRes, categoriesRes] = await Promise.all([
+          supabase.from('foods').select('*, category:categories(*)').order('name'),
+          supabase.from('categories').select('*').order('sort_order'),
+        ]);
+        setFoods(foodsRes.data ?? []);
+        setCategories(categoriesRes.data ?? []);
+      } catch {
+        // network/server error — show empty menu rather than hang forever
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
   }, []);

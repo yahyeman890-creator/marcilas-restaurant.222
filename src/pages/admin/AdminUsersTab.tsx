@@ -64,7 +64,7 @@ export function AdminUsersTab({ profiles, onRefresh }: Props) {
   async function deleteProfile(id: string) {
     await fetch(`${AUTH_FUNCTION_URL}?action=delete-user`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY, 'x-admin-auth': currentUser?.id ?? '' },
       body: JSON.stringify({ id }),
     });
   }
@@ -190,6 +190,7 @@ export function AdminUsersTab({ profiles, onRefresh }: Props) {
         <UserFormModal
           onClose={() => setShowCreate(false)}
           onSaved={() => { setShowCreate(false); onRefresh(); }}
+          adminId={currentUser?.id}
         />
       )}
 
@@ -198,6 +199,7 @@ export function AdminUsersTab({ profiles, onRefresh }: Props) {
           profile={editing}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); onRefresh(); }}
+          adminId={currentUser?.id}
         />
       )}
 
@@ -250,7 +252,7 @@ export function AdminUsersTab({ profiles, onRefresh }: Props) {
   );
 }
 
-function UserFormModal({ profile, onClose, onSaved }: { profile?: Profile; onClose: () => void; onSaved: () => void }) {
+function UserFormModal({ profile, onClose, onSaved, adminId }: { profile?: Profile; onClose: () => void; onSaved: () => void; adminId?: string }) {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [password, setPassword] = useState('');
@@ -273,7 +275,7 @@ function UserFormModal({ profile, onClose, onSaved }: { profile?: Profile; onClo
 
       const res = await fetch(`${AUTH_FUNCTION_URL}?action=${action}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY, 'x-admin-auth': adminId ?? '' },
         body: JSON.stringify(profile ? { ...body, id: profile.id } : body),
       });
       const data = await res.json();

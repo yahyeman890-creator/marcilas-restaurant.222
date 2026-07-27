@@ -46,6 +46,26 @@ function bytesToHex(bytes: Uint8Array): string {
     .join("");
 }
 
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+async function requireAdmin(supabase: ReturnType<typeof createClient>, req: Request): Promise<boolean> {
+  const authHeader = req.headers.get("x-admin-auth");
+  if (!authHeader) return false;
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, role, is_active")
+    .eq("id", authHeader)
+    .maybeSingle();
+  return !!(data && data.role === "admin" && data.is_active);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -140,7 +160,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const inputHash = await hashPassword(password, profile.password_salt);
-      if (inputHash !== profile.password_hash) {
+      if (!constantTimeEqual(inputHash, profile.password_hash)) {
         return jsonResponse({ error: "Invalid phone number or password" }, 401);
       }
 
@@ -168,6 +188,9 @@ Deno.serve(async (req: Request) => {
 
     // ============ LIST USERS (admin only) ============
     if (action === "list-users") {
+      if (!(await requireAdmin(supabase, req))) {
+        return jsonResponse({ error: "Unauthorized" }, 403);
+      }
       const { data: profiles, error } = await supabase
         .from("profiles")
         .select("id, full_name, phone, role, is_active, created_at")
@@ -182,6 +205,9 @@ Deno.serve(async (req: Request) => {
 
     // ============ CREATE USER (admin creates staff/customer) ============
     if (action === "create-user") {
+      if (!(await requireAdmin(supabase, req))) {
+        return jsonResponse({ error: "Unauthorized" }, 403);
+      }
       const { full_name, phone, password, role } = body;
 
       if (!full_name || !phone || !password || !role) {
@@ -234,6 +260,9 @@ Deno.serve(async (req: Request) => {
 
     // ============ UPDATE USER ============
     if (action === "update-user") {
+      if (!(await requireAdmin(supabase, req))) {
+        return jsonResponse({ error: "Unauthorized" }, 403);
+      }
       const { id, full_name, phone, role, is_active, password } = body;
 
       if (!id) {
@@ -279,6 +308,9 @@ Deno.serve(async (req: Request) => {
 
     // ============ DELETE USER ============
     if (action === "delete-user") {
+      if (!(await requireAdmin(supabase, req))) {
+        return jsonResponse({ error: "Unauthorized" }, 403);
+      }
       const { id } = body;
       if (!id) {
         return jsonResponse({ error: "User ID is required" }, 400);

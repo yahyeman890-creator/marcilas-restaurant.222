@@ -27,21 +27,26 @@ export function AdminDashboard() {
   const [todayClosed, setTodayClosed] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [profilesRes, foodsRes, ordersRes, categoriesRes, todayReportRes] = await Promise.all([
-      fetch(`${AUTH_FUNCTION_URL}?action=list-users`, {
-        headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
-      }).then((r) => r.json()).then((d) => ({ data: d.users ?? [], error: null })).catch(() => ({ data: [], error: null })),
-      supabase.from('foods').select('*, category:categories(*)').order('created_at', { ascending: false }),
-      supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
-      supabase.from('categories').select('*').order('sort_order'),
-      supabase.from('z_reports').select('id').eq('business_date', new Date().toISOString().slice(0, 10)).maybeSingle(),
-    ]);
-    setProfiles(profilesRes.data ?? []);
-    setFoods(foodsRes.data ?? []);
-    setOrders(ordersRes.data ?? []);
-    setCategories(categoriesRes.data ?? []);
-    setTodayClosed(!!todayReportRes.data);
-    setLoading(false);
+    try {
+      const [profilesRes, foodsRes, ordersRes, categoriesRes, todayReportRes] = await Promise.all([
+        fetch(`${AUTH_FUNCTION_URL}?action=list-users`, {
+          headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY, 'x-admin-auth': user?.id ?? '' },
+        }).then((r) => r.json()).then((d) => ({ data: d.users ?? [], error: null })).catch(() => ({ data: [], error: null })),
+        supabase.from('foods').select('*, category:categories(*)').order('created_at', { ascending: false }),
+        supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
+        supabase.from('categories').select('*').order('sort_order'),
+        supabase.from('z_reports').select('id').eq('business_date', new Date().toISOString().slice(0, 10)).maybeSingle(),
+      ]);
+      setProfiles(profilesRes.data ?? []);
+      setFoods(foodsRes.data ?? []);
+      setOrders(ordersRes.data ?? []);
+      setCategories(categoriesRes.data ?? []);
+      setTodayClosed(!!todayReportRes.data);
+    } catch {
+      // Partial failure — keep what we have, don't freeze the UI
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

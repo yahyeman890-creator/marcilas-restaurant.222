@@ -54,29 +54,34 @@ export function CashierDashboard() {
     else if (tab === 'preparing') query = query.eq('status', 'preparing');
     else if (tab === 'ready') query = query.eq('status', 'ready');
 
-    const [tabRes, allRes, todayReportRes] = await Promise.all([
-      query,
-      supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .is('z_report_id', null)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('z_reports')
-        .select('id')
-        .eq('business_date', new Date().toISOString().slice(0, 10))
-        .maybeSingle(),
-    ]);
+    try {
+      const [tabRes, allRes, todayReportRes] = await Promise.all([
+        query,
+        supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .is('z_report_id', null)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('z_reports')
+          .select('id')
+          .eq('business_date', new Date().toISOString().slice(0, 10))
+          .maybeSingle(),
+      ]);
 
-    setOrders(tabRes.data ?? []);
-    setAllActiveOrders(allRes.data ?? []);
-    setLoading(false);
+      setOrders(tabRes.data ?? []);
+      setAllActiveOrders(allRes.data ?? []);
 
-    if (knownOrderIds.current.size === 0 && allRes.data) {
-      allRes.data.forEach((o) => knownOrderIds.current.add(o.id));
+      if (knownOrderIds.current.size === 0 && allRes.data) {
+        allRes.data.forEach((o) => knownOrderIds.current.add(o.id));
+      }
+
+      setTodayClosed(!!todayReportRes.data);
+    } catch {
+      // network error — keep existing data, don't freeze
+    } finally {
+      setLoading(false);
     }
-
-    setTodayClosed(!!todayReportRes.data);
   }, [tab]);
 
   useEffect(() => {
