@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Users, UtensilsCrossed, ClipboardList, BarChart3, DollarSign, ShoppingBag, Loader2, Receipt, History, Truck } from 'lucide-react';
 import { supabase, AUTH_FUNCTION_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,24 @@ import { AdminRevenueTab } from '@/pages/admin/AdminRevenueTab';
 import { ZReportsHistoryTab } from '@/pages/admin/ZReportsHistoryTab';
 import { ZReportModal } from '@/components/ZReportModal';
 import { formatETB, sumShiftRevenue } from '@/lib/utils';
+
+async function fetchProfiles(adminId: string): Promise<Profile[]> {
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${AUTH_FUNCTION_URL}?action=list-users`, {
+        headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY, 'x-admin-auth': adminId },
+      });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.users)) return data.users;
+      if (attempt === MAX_ATTEMPTS) return [];
+    } catch {
+      if (attempt === MAX_ATTEMPTS) return [];
+    }
+    await new Promise((r) => setTimeout(r, 400 * attempt));
+  }
+  return [];
+}
 
 type Tab = 'overview' | 'orders' | 'foods' | 'users' | 'revenue' | 'zreport' | 'history';
 
@@ -28,16 +46,14 @@ export function AdminDashboard() {
 
   const loadData = useCallback(async () => {
     try {
-      const [profilesRes, foodsRes, ordersRes, categoriesRes, todayReportRes] = await Promise.all([
-        fetch(`${AUTH_FUNCTION_URL}?action=list-users`, {
-          headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY, 'x-admin-auth': user?.id ?? '' },
-        }).then((r) => r.json()).then((d) => ({ data: d.users ?? [], error: null })).catch(() => ({ data: [], error: null })),
+      const [profilesData, foodsRes, ordersRes, categoriesRes, todayReportRes] = await Promise.all([
+        user?.id ? fetchProfiles(user.id) : Promise.resolve([]),
         supabase.from('foods').select('*, category:categories(*)').order('created_at', { ascending: false }),
         supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
         supabase.from('categories').select('*').order('sort_order'),
         supabase.from('z_reports').select('id').eq('business_date', new Date().toISOString().slice(0, 10)).maybeSingle(),
       ]);
-      setProfiles(profilesRes.data ?? []);
+      setProfiles(profilesData);
       setFoods(foodsRes.data ?? []);
       setOrders(ordersRes.data ?? []);
       setCategories(categoriesRes.data ?? []);
@@ -55,6 +71,32 @@ export function AdminDashboard() {
 
   // Real-time: re-fetch orders whenever anything changes
   useOrdersRealtime(loadData);
+
+  // Real-time: listen for changes on profiles, foods, and z_reports so the
+  // admin dashboard stays in sync without a manual refresh.
+  const loadDataRef = useRef(loadData);
+  useEffect(() => { loadDataRef.current = loadData; }, [loadData]);
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-profiles-foods-zreports')
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => loadDataRef.current(),
+      )
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'foods' },
+        () => loadDataRef.current(),
+      )
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'z_reports' },
+        () => loadDataRef.current(),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const activeOrders = orders.filter((o) => !o.z_report_id);
   const todayRevenue = sumShiftRevenue(activeOrders);
