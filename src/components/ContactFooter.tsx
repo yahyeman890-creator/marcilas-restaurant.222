@@ -101,6 +101,30 @@ export function ContactFooter() {
           </p>
         </div>
       </div>
+
+      <div className="border-t border-white/10 bg-black/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-center">
+            <span className="text-gray-500 text-xs tracking-wide">Designed &amp; Developed by</span>
+            <span className="hidden sm:inline text-gray-700">·</span>
+            <a
+              href="tel:+251973680108"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 transition hover:text-brand-400"
+            >
+              <Phone size={13} /> +251973680108
+            </a>
+            <span className="hidden sm:inline text-gray-700">·</span>
+            <a
+              href="https://t.me/Xo_silver"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 transition hover:text-brand-400"
+            >
+              <TelegramIcon className="w-3.5 h-3.5" /> @Xo_silver
+            </a>
+          </div>
+        </div>
+      </div>
     </footer>
   );
 }
