@@ -15,6 +15,8 @@ export function LoadingScreen() {
       if (done) return;
       done = true;
       setHidden(true);
+      const htmlLoading = document.getElementById('app-loading');
+      if (htmlLoading) htmlLoading.classList.add('hidden');
     };
 
     // The app sets this flag once React has mounted.
